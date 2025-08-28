@@ -1,256 +1,145 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Presensi QR – FBE UII</title>
-
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <style>
-    :root { --bg:#0b1020; --card:#111a33; --muted:#7f8aa3; --accent:#4ea1ff; --ok:#35c759; --err:#ff453a; }
-    html,body{margin:0;padding:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-    .wrap{max-width:960px;margin:24px auto;padding:16px}
-    h1{font-size:1.6rem;margin:0 0 8px}
-    .tabs{display:flex;gap:8px;margin:12px 0 20px}
-    .tab{padding:10px 14px;border-radius:12px;background:#0e1730;color:#cfe3ff;cursor:pointer;user-select:none}
-    .tab.active{background:var(--accent);color:#00122a}
-    .card{background:var(--card);border:1px solid #1b2b55;border-radius:16px;padding:16px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .col{flex:1 1 280px}
-    label{display:block;color:#cfe3ff;margin:8px 0 6px}
-    input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3d70;background:#0f1a35;color:#fff;outline:none}
-    button{padding:10px 14px;border-radius:10px;border:1px solid #2a3d70;background:#142350;color:#cfe3ff;cursor:pointer}
-    button.primary{background:var(--accent);color:#00122a;border-color:#3d87d6}
-    .hint{color:var(--muted);font-size:.92rem}
-    .status{margin-top:10px;padding:10px 12px;border-radius:10px}
-    .status.ok{background:#0d2a1a;border:1px solid #1e8e3e;color:#c8ffd9}
-    .status.err{background:#2a0d0d;border:1px solid #b3261e;color:#ffd6d3}
-    .qrBox{margin-top:16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-    .qrBox img{width:240px;height:240px;border-radius:12px;border:1px solid #2a3d70;background:#fff}
-    .link{word-break:break-all;background:#0d162f;border:1px solid #223a77;border-radius:10px;padding:8px 10px}
-    .pill{display:inline-block;padding:3px 8px;border-radius:999px;background:#0d162f;border:1px solid #223a77;color:#b7cdfc;font-size:.85rem;margin-left:8px}
-    .sep{height:1px;background:#223a77;margin:16px 0}
-    .gsi{margin-top:10px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Presensi Dinamis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hidden { display: none; }
+        #qrcode { display: flex; justify-content: center; align-items: center; }
+    </style>
 </head>
-<body>
-<div class="wrap">
-  <h1>Presensi QR <span class="pill" id="modePill">Admin</span></h1>
-  <div class="tabs">
-    <div class="tab active" id="tabAdmin">Admin</div>
-    <div class="tab" id="tabAttend">Presensi</div>
-  </div>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
 
-  <!-- KARTU ADMIN -->
-  <div class="card" id="viewAdmin">
-    <div class="row">
-      <div class="col">
-        <label for="sheetName">Nama Kegiatan / Sesi</label>
-        <input type="text" id="sheetName" placeholder="Contoh: Workshop Excel 27-08-2025" />
-        <div class="hint">Nama ini akan menjadi nama Sheet di Spreadsheet presensi.</div>
-      </div>
-      <div class="col">
-        <label>&nbsp;</label>
-        <button class="primary" id="btnCreate">Buat & Tampilkan QR</button>
-      </div>
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+        <!-- Kontainer untuk semua view -->
+        <div id="login-view">
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
+            <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
+            <div id="g_id_onload" data-client_id="172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
+            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
+        </div>
+        <div id="setup-view" class="hidden">
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
+            <p class="text-slate-500 mb-6">Masukkan nama kegiatan untuk membuat QR Code.</p>
+            <form id="activity-form">
+                <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4" placeholder="Contoh: Seminar Digital Marketing" required>
+                <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400">Buat QR Code</button>
+            </form>
+        </div>
+        <div id="qrcode-view" class="hidden">
+            <h1 id="qrcode-title" class="text-3xl font-bold text-slate-800 break-words"></h1>
+            <p class="text-slate-500 mt-2 mb-6">Peserta dapat memindai kode ini untuk presensi.</p>
+            <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block"></div>
+            <button id="reset-btn" class="mt-8 w-full bg-slate-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Buat Sesi Baru</button>
+        </div>
     </div>
 
-    <div class="gsi">
-      <div id="gsiSignInAdmin"></div>
-      <div class="hint">Login Google diperlukan untuk verifikasi admin saat membuat sesi.</div>
-    </div>
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqvtgEdKNoj4D1lB8pd61zFgSEQXxXQs0Hh5-8RB20We3L7j1c3JDu_DNAubhQ8FmtiQ/exec';
+        let googleIdToken = null;
+        const views = { login: document.getElementById('login-view'), setup: document.getElementById('setup-view'), qrcode: document.getElementById('qrcode-view') };
 
-    <div id="adminStatus"></div>
-    <div class="qrBox" id="qrBox" style="display:none;">
-      <img id="qrImg" alt="QR kode presensi" />
-      <div>
-        <div class="hint">Tautan presensi (bisa ditempel ke grup/WA):</div>
-        <div class="link" id="attendLink"></div>
-      </div>
-    </div>
-  </div>
+        function showView(viewName) {
+            Object.values(views).forEach(view => view.classList.add('hidden'));
+            views[viewName].classList.remove('hidden');
+        }
 
-  <!-- KARTU PRESENSI -->
-  <div class="card" id="viewAttend" style="display:none;">
-    <div class="row">
-      <div class="col">
-        <div id="attendTitle" class="hint">Memuat…</div>
-      </div>
-      <div class="col" style="text-align:right">
-        <button id="btnPresent" class="primary">Saya Hadir</button>
-      </div>
-    </div>
-    <div class="gsi">
-      <div id="gsiSignInAttend"></div>
-      <div class="hint">Login Google diperlukan agar sistem mengenali identitas Anda.</div>
-    </div>
-    <div id="attendStatus"></div>
-  </div>
-</div>
+        function handleCredentialResponse(response) {
+            googleIdToken = response.credential;
+            showView('setup');
+        }
 
-<script>
-  // ========= KONFIGURASI =========
-  const GSI_CLIENT_ID = "172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com";                   // ← ganti
-  const SCRIPT_URL    = "https://script.google.com/macros/s/AKfycbxqvtgEdKNoj4D1lB8pd61zFgSEQXxXQs0Hh5-8RB20We3L7j1c3JDu_DNAubhQ8FmtiQ/exec";            // ← ganti (URL /exec)
-  // ===============================
+        async function callAppsScript(payload) {
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload),
+                    redirect: "follow"
+                });
+                if (!res.ok) {
+                    // Jika server merespons dengan error (misal: 404, 500)
+                    throw new Error(`Server Error: Status ${res.status}`);
+                }
+                const result = await res.json();
+                if (result.status !== 'success') {
+                    // Jika script mengembalikan pesan error
+                    throw new Error(`Script Error: ${result.message}`);
+                }
+                return result;
+            } catch (error) {
+                // [DEBUGGING] Menangkap semua jenis error fetch
+                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                    // Ini adalah error jaringan murni
+                    throw new Error('Network Error: Gagal terhubung ke server. Periksa SCRIPT_URL atau koneksi internet.');
+                }
+                // Melempar kembali error lainnya untuk ditangani di bawah
+                throw error;
+            }
+        }
 
-  // Token & profil yang diperoleh dari GSI
-  let googleIdToken = null;
-  let userEmail = null;
+        document.getElementById('activity-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const activityName = document.getElementById('activity-name').value.trim();
+            const generateBtn = document.getElementById('generate-btn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Membuat sheet...';
 
-  // Util: decode ID token (JWT) agar bisa menampilkan email di UI (opsional)
-  function parseJwt (token) {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload);
-    } catch(e){ return {}; }
-  }
+            try {
+                await callAppsScript({ action: 'createSheet', sheetName: activityName, token: googleIdToken });
+                const formUrl = new URL(window.location.href);
+                formUrl.search = '';
+                formUrl.searchParams.set('activity', activityName);
+                document.getElementById('qrcode-title').textContent = activityName;
+                const qrcodeContainer = document.getElementById('qrcode');
+                qrcodeContainer.innerHTML = '';
+                new QRCode(qrcodeContainer, { text: formUrl.href, width: 256, height: 256 });
+                showView('qrcode');
+            } catch (error) {
+                // [DEBUGGING] Menampilkan pesan error yang lebih detail
+                alert('Gagal membuat sesi:\n\n' + error.message);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Buat QR Code';
+            }
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', () => { showView('setup'); });
 
-  // Inisialisasi GSI (render 2 tombol: untuk Admin & Presensi)
-  window.onload = function() {
-    // Tab switching
-    const tabAdmin  = document.getElementById('tabAdmin');
-    const tabAttend = document.getElementById('tabAttend');
-    const vAdmin = document.getElementById('viewAdmin');
-    const vAttend= document.getElementById('viewAttend');
-    const pill = document.getElementById('modePill');
-
-    function setTab(mode){
-      if(mode==='admin'){
-        tabAdmin.classList.add('active'); tabAttend.classList.remove('active');
-        vAdmin.style.display='block'; vAttend.style.display='none';
-        pill.textContent='Admin';
-      }else{
-        tabAttend.classList.add('active'); tabAdmin.classList.remove('active');
-        vAttend.style.display='block'; vAdmin.style.display='none';
-        pill.textContent='Presensi';
-      }
-    }
-
-    tabAdmin.addEventListener('click', ()=>setTab('admin'));
-    tabAttend.addEventListener('click', ()=>setTab('attend'));
-
-    // Jika URL punya parameter ?s=NamaSheet, otomatis masuk mode Presensi
-    const params = new URLSearchParams(location.search);
-    const sheetParam = params.get('s');
-    if (sheetParam) {
-      setTab('attend');
-      document.getElementById('attendTitle').textContent = `Presensi untuk: “${sheetParam}”`;
-    }
-
-    // Render Google Sign-In
-    window.google?.accounts.id.initialize({
-      client_id: GSI_CLIENT_ID,
-      callback: (resp) => {
-        googleIdToken = resp.credential;
-        const payload = parseJwt(googleIdToken);
-        userEmail = payload.email || null;
-        // Tampilkan status login singkat
-        const msg = userEmail ? `Login sebagai ${userEmail}` : `Login berhasil`;
-        showStatus('adminStatus', 'ok', msg);
-        showStatus('attendStatus','ok', msg);
-      },
-      auto_select: false
-    });
-
-    // Dua tombol sign-in (admin & attend)
-    window.google?.accounts.id.renderButton(
-      document.getElementById("gsiSignInAdmin"),
-      { theme: "outline", size: "large", text: "continue_with", shape:"pill" }
-    );
-    window.google?.accounts.id.renderButton(
-      document.getElementById("gsiSignInAttend"),
-      { theme: "outline", size: "large", text: "continue_with", shape:"pill" }
-    );
-
-    // Event tombol Admin: Buat & Tampilkan QR
-    document.getElementById('btnCreate').addEventListener('click', onCreateSession);
-    // Event tombol Peserta: Saya Hadir
-    document.getElementById('btnPresent').addEventListener('click', onMarkPresent);
-  };
-
-  // Helper tampilkan status
-  function showStatus(id, type, text){
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.className = 'status ' + (type==='ok'?'ok':'err');
-    el.textContent = text;
-  }
-
-  // POST ke Apps Script (tanpa preflight)
-  async function callScript(payload){
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // penting: hindari preflight
-      body: JSON.stringify(payload)
-    });
-    // Jika diblokir CORS/redirect login, fetch bisa gagal di sini (try/catch di pemanggil)
-    if(!res.ok) {
-      const text = await res.text().catch(()=> '');
-      throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
-    }
-    return res.json();
-  }
-
-  // ADMIN: Buat sheet dan tampilkan QR
-  async function onCreateSession(){
-    const name = (document.getElementById('sheetName').value || '').trim();
-    if (!name) { showStatus('adminStatus','err','Nama kegiatan tidak boleh kosong.'); return; }
-    if (!googleIdToken) { showStatus('adminStatus','err','Silakan login Google terlebih dahulu.'); return; }
-
-    showStatus('adminStatus','ok','Memproses…');
-    try{
-      const data = await callScript({
-        action: 'createSheet',
-        token: googleIdToken,
-        sheetName: name
-      });
-      if (data.status !== 'success') throw new Error(data.message || 'Gagal membuat sesi.');
-
-      // Buat URL Presensi & QR
-      const attendURL = `${location.origin}${location.pathname}?s=${encodeURIComponent(name)}`;
-      document.getElementById('attendLink').textContent = attendURL;
-
-      // Gunakan Google Chart API untuk QR (sederhana)
-      const qr = `https://chart.googleapis.com/chart?cht=qr&chs=240x240&chl=${encodeURIComponent(attendURL)}`;
-      document.getElementById('qrImg').src = qr;
-
-      document.getElementById('qrBox').style.display = 'flex';
-      showStatus('adminStatus','ok', data.message || 'Sesi siap, QR ditampilkan.');
-    }catch(e){
-      showStatus('adminStatus','err', `Gagal membuat sesi: ${e.message}`);
-    }
-  }
-
-  // PESERTA: Klik “Saya Hadir”
-  async function onMarkPresent(){
-    const params = new URLSearchParams(location.search);
-    const sheetName = params.get('s');
-    if (!sheetName) { showStatus('attendStatus','err','Tautan presensi tidak mengandung parameter sesi.'); return; }
-    if (!googleIdToken) { showStatus('attendStatus','err','Silakan login Google terlebih dahulu.'); return; }
-
-    showStatus('attendStatus','ok','Mencatat kehadiran…');
-    try{
-      const data = await callScript({
-        action: 'recordAttendance',
-        token: googleIdToken,
-        sheetName
-        // Tidak perlu kirim participantId; server pakai email dari token
-      });
-      if (data.status !== 'success') throw new Error(data.message || 'Gagal mencatat presensi.');
-      const who = userEmail ? ` (${userEmail})` : '';
-      showStatus('attendStatus','ok', `Presensi berhasil${who}. Terima kasih!`);
-    }catch(e){
-      showStatus('attendStatus','err', `Gagal mencatat presensi: ${e.message}`);
-    }
-  }
-</script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activityName = urlParams.get('activity');
+            if (activityName) {
+                document.body.innerHTML = `<div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center"><h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1><p class="text-slate-500 mb-8">Masukkan ID Anda untuk presensi.</p><form id="attendance-form-participant"><input type="text" id="participant-id" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg mb-4" placeholder="ID Peserta" required><button type="submit" id="submit-attendance" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">Kirim</button></form><div id="attendance-result" class="hidden mt-6"><p class="font-semibold text-lg"></p></div></div>`;
+                document.getElementById('attendance-form-participant').addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const participantId = document.getElementById('participant-id').value;
+                    const submitBtn = document.getElementById('submit-attendance');
+                    const resultEl = document.querySelector('#attendance-result p');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Mengirim...';
+                    try {
+                        await callAppsScript({ action: 'recordAttendance', sheetName: decodeURIComponent(activityName), participantId: participantId });
+                        document.getElementById('attendance-form-participant').classList.add('hidden');
+                        resultEl.textContent = '✅ Presensi berhasil!';
+                        resultEl.className = 'text-green-600 font-semibold text-lg';
+                        document.getElementById('attendance-result').classList.remove('hidden');
+                    } catch (error) {
+                        resultEl.textContent = '❌ Gagal: ' + error.message;
+                        resultEl.className = 'text-red-600 font-semibold text-lg';
+                        document.getElementById('attendance-result').classList.remove('hidden');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Kirim';
+                    }
+                });
+            }
+        };
+    </script>
 </body>
 </html>
