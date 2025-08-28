@@ -11,11 +11,7 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .hidden { display: none; }
-        #qrcode {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        #qrcode { display: flex; justify-content: center; align-items: center; }
     </style>
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
@@ -27,7 +23,7 @@
             <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
             <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
             <div id="g_id_onload"
-                 data-client_id="172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com"
+                 data-client_id="MASUKKAN_CLIENT_ID_ANDA_DI_SINI"
                  data-callback="handleCredentialResponse"
                  data-auto_prompt="false">
             </div>
@@ -55,12 +51,9 @@
     </div>
 
     <script>
-        // ======================== KONFIGURASI ========================
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmlRHq0yl-hc4ViUnueaXO9eNCr4tGCygl2ZeGUjh-FvNrOqBTKcm8TEFzvwmzGssT8g/exec;
-        // =============================================================
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmlRHq0yl-hc4ViUnueaXO9eNCr4tGCygl2ZeGUjh-FvNrOqBTKcm8TEFzvwmzGssT8g/exec';
 
-        // Variabel global
-        let googleAccessToken = null;
+        let googleIdToken = null;
         let qrcodeInstance = null;
         const views = {
             login: document.getElementById('login-view'),
@@ -68,37 +61,31 @@
             qrcode: document.getElementById('qrcode-view'),
         };
 
-        // Fungsi untuk menampilkan view tertentu
         function showView(viewName) {
             Object.values(views).forEach(view => view.classList.add('hidden'));
             views[viewName].classList.remove('hidden');
         }
 
-        // Callback setelah login Google berhasil
         function handleCredentialResponse(response) {
-            googleAccessToken = response.credential;
+            googleIdToken = response.credential;
             showView('setup');
         }
 
-        // Fungsi untuk berinteraksi dengan Google Apps Script
         async function callAppsScript(payload) {
             const res = await fetch(SCRIPT_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                    'Authorization': `Bearer ${googleAccessToken}`
-                },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload),
                 redirect: "follow"
             });
+            
+            if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+
             const result = await res.json();
-            if (result.status !== 'success') {
-                throw new Error(result.message);
-            }
+            if (result.status !== 'success') throw new Error(result.message);
             return result;
         }
 
-        // Event listener untuk form pembuatan kegiatan
         document.getElementById('activity-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const activityName = document.getElementById('activity-name').value.trim();
@@ -108,24 +95,21 @@
             generateBtn.textContent = 'Membuat sheet...';
 
             try {
-                // 1. Buat sheet di Google Sheets
-                await callAppsScript({ action: 'createSheet', sheetName: activityName });
+                await callAppsScript({
+                    action: 'createSheet',
+                    sheetName: activityName,
+                    token: googleIdToken // Kirim token untuk otorisasi
+                });
 
-                // 2. Buat URL untuk formulir presensi
-                // URL ini akan berisi nama sheet sebagai parameter
                 const formUrl = new URL(window.location.href);
-                formUrl.searchParams.set('activity', encodeURIComponent(activityName));
+                formUrl.search = '';
+                formUrl.searchParams.set('activity', activityName);
                 
-                // 3. Tampilkan QR Code
                 document.getElementById('qrcode-title').textContent = activityName;
                 const qrcodeContainer = document.getElementById('qrcode');
                 qrcodeContainer.innerHTML = '';
                 if (!qrcodeInstance) {
-                    qrcodeInstance = new QRCode(qrcodeContainer, {
-                        width: 256,
-                        height: 256,
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
+                    qrcodeInstance = new QRCode(qrcodeContainer, { width: 256, height: 256, correctLevel: QRCode.CorrectLevel.H });
                 }
                 qrcodeInstance.makeCode(formUrl.href);
                 showView('qrcode');
@@ -138,19 +122,16 @@
             }
         });
         
-        // Event listener untuk tombol reset
         document.getElementById('reset-btn').addEventListener('click', () => {
             document.getElementById('activity-form').reset();
             showView('setup');
         });
 
-        // Logika untuk menangani halaman formulir presensi (jika ada parameter 'activity')
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const activityName = urlParams.get('activity');
 
             if (activityName) {
-                // Jika ada parameter 'activity', ubah halaman menjadi formulir presensi
                 document.body.innerHTML = `
                     <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
                         <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1>
@@ -159,9 +140,7 @@
                             <input type="text" id="participant-id" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg mb-4" placeholder="ID Peserta" required>
                             <button type="submit" id="submit-attendance" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">Kirim</button>
                         </form>
-                        <div id="attendance-success" class="hidden mt-6">
-                            <p class="text-green-600 font-semibold text-lg">✅ Presensi berhasil!</p>
-                        </div>
+                        <div id="attendance-result" class="hidden mt-6"><p class="font-semibold text-lg"></p></div>
                     </div>
                 `;
                 
@@ -169,30 +148,26 @@
                     e.preventDefault();
                     const participantId = document.getElementById('participant-id').value;
                     const submitBtn = document.getElementById('submit-attendance');
+                    const resultEl = document.querySelector('#attendance-result p');
                     submitBtn.disabled = true;
                     submitBtn.textContent = 'Mengirim...';
 
                     try {
-                        // Kirim data presensi ke Apps Script
-                        // Tidak perlu token login untuk peserta
-                        const res = await fetch(SCRIPT_URL, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'text/plain;charset=utf-8'},
-                            body: JSON.stringify({
-                                action: 'recordAttendance',
-                                sheetName: decodeURIComponent(activityName),
-                                participantId: participantId
-                            }),
-                            redirect: "follow"
+                        await callAppsScript({
+                            action: 'recordAttendance',
+                            sheetName: decodeURIComponent(activityName),
+                            participantId: participantId
                         });
-                        const result = await res.json();
-                        if (result.status !== 'success') throw new Error(result.message);
                         
                         document.getElementById('attendance-form-participant').classList.add('hidden');
-                        document.getElementById('attendance-success').classList.remove('hidden');
+                        resultEl.textContent = '✅ Presensi berhasil!';
+                        resultEl.className = 'text-green-600 font-semibold text-lg';
+                        document.getElementById('attendance-result').classList.remove('hidden');
 
                     } catch (error) {
-                        alert('Gagal: ' + error.message);
+                        resultEl.textContent = '❌ Gagal: ' + error.message;
+                        resultEl.className = 'text-red-600 font-semibold text-lg';
+                        document.getElementById('attendance-result').classList.remove('hidden');
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Kirim';
                     }
