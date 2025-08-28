@@ -16,12 +16,12 @@
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+    <div id="main-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
         <!-- Kontainer untuk semua view -->
         <div id="login-view">
             <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
             <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
-            <div id="g_id_onload" data-client_id="172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
+            <!-- [FIX] Elemen g_id_onload yang menyebabkan error telah dihapus -->
             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
         </div>
         <div id="setup-view" class="hidden">
@@ -36,15 +36,17 @@
             <h1 id="qrcode-title" class="text-3xl font-bold text-slate-800 break-words"></h1>
             <p class="text-slate-500 mt-2 mb-6">Peserta dapat memindai kode ini untuk presensi.</p>
             <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block"></div>
-            <button id="reset-btn" class="mt-8 w-full bg-slate-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Buat Sesi Baru</button>
+            <button id="close-session-btn" class="mt-8 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400">Tutup Sesi Presensi</button>
+            <button id="reset-btn" class="mt-4 w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm">Buat Sesi Baru</button>
         </div>
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVycZZkNZ6HcEAcX3wQyASTkB8tWbtCwILV_SVLU6YcUinCCcTrvml6AcoMWMdzrCo6w/exec';
-        const CLIENT_ID = '172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com'; // [DIUBAH] Client ID dipindahkan ke sini
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9E4GyV7CueZRk8TT3-BIUhA68wxKMcLSKJngkV4vhCTY-XcFdqXcBWfTi9vwKYooTSQ/exec';
+        const CLIENT_ID = '172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com';
 
-        let googleIdToken = null; // Token untuk panitia
+        let googleIdToken = null;
+        let currentActivityName = '';
         const views = { login: document.getElementById('login-view'), setup: document.getElementById('setup-view'), qrcode: document.getElementById('qrcode-view') };
 
         function showView(viewName) {
@@ -58,6 +60,7 @@
         }
 
         async function callAppsScript(payload) {
+            // Kode callAppsScript tetap sama
             try {
                 const res = await fetch(SCRIPT_URL, {
                     method: 'POST',
@@ -65,13 +68,9 @@
                     body: JSON.stringify(payload),
                     redirect: "follow"
                 });
-                if (!res.ok) {
-                    throw new Error(`Server Error: Status ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`Server Error: Status ${res.status}`);
                 const result = await res.json();
-                if (result.status !== 'success') {
-                    throw new Error(`Script Error: ${result.message}`);
-                }
+                if (result.status !== 'success') throw new Error(`Script Error: ${result.message}`);
                 return result;
             } catch (error) {
                 if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
@@ -83,17 +82,16 @@
 
         document.getElementById('activity-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const activityName = document.getElementById('activity-name').value.trim();
+            currentActivityName = document.getElementById('activity-name').value.trim();
             const generateBtn = document.getElementById('generate-btn');
             generateBtn.disabled = true;
             generateBtn.textContent = 'Membuat sheet...';
-
             try {
-                await callAppsScript({ action: 'createSheet', sheetName: activityName, token: googleIdToken });
+                await callAppsScript({ action: 'createSheet', sheetName: currentActivityName, token: googleIdToken });
                 const formUrl = new URL(window.location.href);
                 formUrl.search = '';
-                formUrl.searchParams.set('activity', activityName);
-                document.getElementById('qrcode-title').textContent = activityName;
+                formUrl.searchParams.set('activity', currentActivityName);
+                document.getElementById('qrcode-title').textContent = currentActivityName;
                 const qrcodeContainer = document.getElementById('qrcode');
                 qrcodeContainer.innerHTML = '';
                 new QRCode(qrcodeContainer, { text: formUrl.href, width: 256, height: 256 });
@@ -106,44 +104,70 @@
             }
         });
         
+        document.getElementById('close-session-btn').addEventListener('click', async function() {
+            if (!confirm(`Apakah Anda yakin ingin menutup sesi presensi untuk "${currentActivityName}"? Aksi ini tidak dapat dibatalkan.`)) return;
+            this.disabled = true;
+            this.textContent = 'Menutup...';
+            try {
+                const result = await callAppsScript({ action: 'closeSheet', sheetName: currentActivityName, token: googleIdToken });
+                alert(result.message);
+                this.textContent = 'Sesi Telah Ditutup';
+            } catch (error) {
+                alert('Gagal menutup sesi:\n\n' + error.message);
+                this.disabled = false;
+                this.textContent = 'Tutup Sesi Presensi';
+            }
+        });
+
         document.getElementById('reset-btn').addEventListener('click', () => { showView('setup'); });
 
-        // [BARU] Fungsi callback untuk login peserta
+        function getUserLocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    return resolve({ latitude: null, longitude: null, timestamp: Date.now() });
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, timestamp: position.timestamp }),
+                    () => resolve({ latitude: null, longitude: null, timestamp: Date.now() })
+                );
+            });
+        }
+
         async function handleParticipantSignIn(response) {
             const urlParams = new URLSearchParams(window.location.search);
             const activityName = urlParams.get('activity');
             const participantToken = response.credential;
             const mainContainer = document.getElementById('participant-view');
-
-            mainContainer.innerHTML = `<p class="text-lg text-slate-600">Memproses presensi...</p>`;
-
+            mainContainer.innerHTML = `<p class="text-lg text-slate-600">Mendapatkan lokasi Anda...</p>`;
             try {
-                const result = await callAppsScript({
-                    action: 'recordAttendance',
-                    sheetName: decodeURIComponent(activityName),
-                    token: participantToken
-                });
-                // Menampilkan pesan sukses dengan nama peserta
-                mainContainer.innerHTML = `
-                    <div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6">
-                        <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1>
-                    <p class="text-slate-600 text-lg">Terima kasih, <strong>${result.data}</strong>. Kehadiran Anda telah dicatat.</p>
-                `;
+                const location = await getUserLocation();
+                mainContainer.innerHTML = `<p class="text-lg text-slate-600">Memproses presensi...</p>`;
+                const result = await callAppsScript({ action: 'recordAttendance', sheetName: decodeURIComponent(activityName), token: participantToken, location: location });
+                mainContainer.innerHTML = `<div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6"><svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1><p class="text-slate-600 text-lg">Terima kasih, <strong>${result.data}</strong>. Kehadiran Anda telah dicatat.</p>`;
             } catch (error) {
                 mainContainer.innerHTML = `<p class="text-red-500 text-lg">❌ Gagal: ${error.message}</p>`;
             }
         }
 
         window.onload = function() {
-            // [DIUBAH] Memasukkan Client ID ke dalam div login panitia
-            document.getElementById('g_id_onload').dataset.client_id = CLIENT_ID;
+            // [FIX] Memeriksa apakah CLIENT_ID sudah diisi
+            if (CLIENT_ID.startsWith('MASUKKAN') || CLIENT_ID.length < 10) {
+                document.getElementById('main-container').innerHTML = `
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                        <p class="font-bold">Konfigurasi Belum Selesai</p>
+                        <p>Anda belum mengganti placeholder <strong>CLIENT_ID</strong> di dalam file index.html. Silakan salin Client ID Anda dari Google Cloud Console dan tempelkan ke dalam kode.</p>
+                    </div>
+                `;
+                return; // Menghentikan eksekusi skrip lebih lanjut
+            }
+
+            // Inisialisasi Google Sign-In untuk Panitia
+            google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleCredentialResponse });
+            google.accounts.id.renderButton(document.querySelector('.g_id_signin'), { theme: 'outline', size: 'large' });
 
             const urlParams = new URLSearchParams(window.location.search);
             const activityName = urlParams.get('activity');
             if (activityName) {
-                // [DIUBAH] Tampilan untuk peserta sekarang adalah tombol login
                 document.body.innerHTML = `
                     <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
                         <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1>
@@ -152,15 +176,8 @@
                     </div>
                 `;
                 
-                // [DIUBAH] Secara manual membuat tombol login Google
-                google.accounts.id.initialize({
-                    client_id: CLIENT_ID,
-                    callback: handleParticipantSignIn
-                });
-                google.accounts.id.renderButton(
-                    document.getElementById('participant-signin-button'),
-                    { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', logo_alignment: 'left' }
-                );
+                google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleParticipantSignIn });
+                google.accounts.id.renderButton(document.getElementById('participant-signin-button'), { theme: 'outline', size: 'large' });
             }
         };
     </script>
