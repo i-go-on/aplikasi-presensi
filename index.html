@@ -21,7 +21,7 @@
         <div id="login-view">
             <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
             <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
-            <div id="g_id_onload" data-client_id="172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
+            <div id="g_id_onload" data-client_id="MASUKKAN_CLIENT_ID_ANDA_DI_SINI" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
         </div>
         <div id="setup-view" class="hidden">
@@ -42,6 +42,8 @@
 
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx7cHIDBiRNEZdgL2d_XUZu1C-QsADcOiFCf7pufIrHg-emTRIUR8PKfHJRh522fq8dbw/exec';
+        const CLIENT_ID = '172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com'; // [DIUBAH] Client ID dipindahkan ke sini
+
         let googleIdToken = null; // Token untuk panitia
         const views = { login: document.getElementById('login-view'), setup: document.getElementById('setup-view'), qrcode: document.getElementById('qrcode-view') };
 
@@ -135,6 +137,9 @@
         }
 
         window.onload = function() {
+            // [DIUBAH] Memasukkan Client ID ke dalam div login panitia
+            document.getElementById('g_id_onload').dataset.client_id = CLIENT_ID;
+
             const urlParams = new URLSearchParams(window.location.search);
             const activityName = urlParams.get('activity');
             if (activityName) {
@@ -143,10 +148,19 @@
                     <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
                         <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1>
                         <p class="text-slate-500 mb-8">Login dengan Google untuk mencatat kehadiran Anda.</p>
-                        <div id="g_id_onload" data-client_id="MASUKKAN_CLIENT_ID_ANDA_DI_SINI" data-callback="handleParticipantSignIn" data-auto_prompt="false"></div>
-                        <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left"></div>
+                        <div id="participant-signin-button"></div>
                     </div>
                 `;
+                
+                // [DIUBAH] Secara manual membuat tombol login Google
+                google.accounts.id.initialize({
+                    client_id: CLIENT_ID,
+                    callback: handleParticipantSignIn
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById('participant-signin-button'),
+                    { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', logo_alignment: 'left' }
+                );
             }
         };
     </script>
