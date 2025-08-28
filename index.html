@@ -41,8 +41,8 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqvtgEdKNoj4D1lB8pd61zFgSEQXxXQs0Hh5-8RB20We3L7j1c3JDu_DNAubhQ8FmtiQ/exec';
-        let googleIdToken = null;
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx7cHIDBiRNEZdgL2d_XUZu1C-QsADcOiFCf7pufIrHg-emTRIUR8PKfHJRh522fq8dbw/exec';
+        let googleIdToken = null; // Token untuk panitia
         const views = { login: document.getElementById('login-view'), setup: document.getElementById('setup-view'), qrcode: document.getElementById('qrcode-view') };
 
         function showView(viewName) {
@@ -64,22 +64,17 @@
                     redirect: "follow"
                 });
                 if (!res.ok) {
-                    // Jika server merespons dengan error (misal: 404, 500)
                     throw new Error(`Server Error: Status ${res.status}`);
                 }
                 const result = await res.json();
                 if (result.status !== 'success') {
-                    // Jika script mengembalikan pesan error
                     throw new Error(`Script Error: ${result.message}`);
                 }
                 return result;
             } catch (error) {
-                // [DEBUGGING] Menangkap semua jenis error fetch
                 if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                    // Ini adalah error jaringan murni
                     throw new Error('Network Error: Gagal terhubung ke server. Periksa SCRIPT_URL atau koneksi internet.');
                 }
-                // Melempar kembali error lainnya untuk ditangani di bawah
                 throw error;
             }
         }
@@ -102,7 +97,6 @@
                 new QRCode(qrcodeContainer, { text: formUrl.href, width: 256, height: 256 });
                 showView('qrcode');
             } catch (error) {
-                // [DEBUGGING] Menampilkan pesan error yang lebih detail
                 alert('Gagal membuat sesi:\n\n' + error.message);
             } finally {
                 generateBtn.disabled = false;
@@ -112,32 +106,47 @@
         
         document.getElementById('reset-btn').addEventListener('click', () => { showView('setup'); });
 
+        // [BARU] Fungsi callback untuk login peserta
+        async function handleParticipantSignIn(response) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activityName = urlParams.get('activity');
+            const participantToken = response.credential;
+            const mainContainer = document.getElementById('participant-view');
+
+            mainContainer.innerHTML = `<p class="text-lg text-slate-600">Memproses presensi...</p>`;
+
+            try {
+                const result = await callAppsScript({
+                    action: 'recordAttendance',
+                    sheetName: decodeURIComponent(activityName),
+                    token: participantToken
+                });
+                // Menampilkan pesan sukses dengan nama peserta
+                mainContainer.innerHTML = `
+                    <div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6">
+                        <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1>
+                    <p class="text-slate-600 text-lg">Terima kasih, <strong>${result.data}</strong>. Kehadiran Anda telah dicatat.</p>
+                `;
+            } catch (error) {
+                mainContainer.innerHTML = `<p class="text-red-500 text-lg">❌ Gagal: ${error.message}</p>`;
+            }
+        }
+
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const activityName = urlParams.get('activity');
             if (activityName) {
-                document.body.innerHTML = `<div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center"><h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1><p class="text-slate-500 mb-8">Masukkan ID Anda untuk presensi.</p><form id="attendance-form-participant"><input type="text" id="participant-id" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg mb-4" placeholder="ID Peserta" required><button type="submit" id="submit-attendance" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">Kirim</button></form><div id="attendance-result" class="hidden mt-6"><p class="font-semibold text-lg"></p></div></div>`;
-                document.getElementById('attendance-form-participant').addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const participantId = document.getElementById('participant-id').value;
-                    const submitBtn = document.getElementById('submit-attendance');
-                    const resultEl = document.querySelector('#attendance-result p');
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = 'Mengirim...';
-                    try {
-                        await callAppsScript({ action: 'recordAttendance', sheetName: decodeURIComponent(activityName), participantId: participantId });
-                        document.getElementById('attendance-form-participant').classList.add('hidden');
-                        resultEl.textContent = '✅ Presensi berhasil!';
-                        resultEl.className = 'text-green-600 font-semibold text-lg';
-                        document.getElementById('attendance-result').classList.remove('hidden');
-                    } catch (error) {
-                        resultEl.textContent = '❌ Gagal: ' + error.message;
-                        resultEl.className = 'text-red-600 font-semibold text-lg';
-                        document.getElementById('attendance-result').classList.remove('hidden');
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Kirim';
-                    }
-                });
+                // [DIUBAH] Tampilan untuk peserta sekarang adalah tombol login
+                document.body.innerHTML = `
+                    <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+                        <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1>
+                        <p class="text-slate-500 mb-8">Login dengan Google untuk mencatat kehadiran Anda.</p>
+                        <div id="g_id_onload" data-client_id="MASUKKAN_CLIENT_ID_ANDA_DI_SINI" data-callback="handleParticipantSignIn" data-auto_prompt="false"></div>
+                        <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left"></div>
+                    </div>
+                `;
             }
         };
     </script>
