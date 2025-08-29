@@ -220,25 +220,97 @@
     <div id="main-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
         <!-- Kontainer untuk semua view -->
         <div id="login-view">
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
-            <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
+            <div class="mb-6">
+                <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800 mb-2">Generator Presensi Digital</h1>
+                <p class="text-slate-500 mb-2">Buat QR Code untuk presensi kegiatan Anda</p>
+                <p class="text-sm text-slate-400">Login dengan Google untuk memulai</p>
+            </div>
             <!-- [FIX] Elemen g_id_onload yang menyebabkan error telah dihapus -->
             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
+            
+            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h3 class="font-semibold text-blue-800 mb-2">📋 Cara Kerja:</h3>
+                <ol class="text-sm text-blue-700 space-y-1">
+                    <li>1. Login dengan akun Google Anda</li>
+                    <li>2. Masukkan nama kegiatan/acara</li>
+                    <li>3. QR Code akan dibuat otomatis</li>
+                    <li>4. Peserta scan QR Code untuk presensi</li>
+                    <li>5. Data tersimpan di Google Sheets</li>
+                </ol>
+            </div>
         </div>
         <div id="setup-view" class="hidden">
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
-            <p class="text-slate-500 mb-6">Masukkan nama kegiatan untuk membuat QR Code.</p>
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
+                <p class="text-slate-500 mb-4">Masukkan nama kegiatan untuk membuat QR Code presensi</p>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-yellow-800">
+                        💡 <strong>Info:</strong> Google Sheet akan dibuat otomatis dengan nama sesuai kegiatan Anda
+                    </p>
+                </div>
+            </div>
             <form id="activity-form">
-                <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4" placeholder="Contoh: Seminar Digital Marketing" required>
-                <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400">Buat QR Code</button>
+                <div class="mb-4">
+                    <label for="activity-name" class="block text-sm font-medium text-slate-700 mb-2">Nama Kegiatan</label>
+                    <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Contoh: Seminar Digital Marketing 2025" required maxlength="100">
+                    <p class="text-xs text-slate-500 mt-1">Sheet akan dibuat dengan nama ini di Google Drive Anda</p>
+                </div>
+                <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors">
+                    <span class="btn-text">🚀 Buat QR Code & Google Sheet</span>
+                </button>
             </form>
         </div>
         <div id="qrcode-view" class="hidden">
-            <h1 id="qrcode-title" class="text-3xl font-bold text-slate-800 break-words"></h1>
-            <p class="text-slate-500 mt-2 mb-6">Peserta dapat memindai kode ini untuk presensi.</p>
-            <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block"></div>
-            <button id="close-session-btn" class="mt-8 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400">Tutup Sesi Presensi</button>
-            <button id="reset-btn" class="mt-4 w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm">Buat Sesi Baru</button>
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h1 id="qrcode-title" class="text-2xl font-bold text-slate-800 break-words mb-2"></h1>
+                <p class="text-slate-500 mb-2">QR Code berhasil dibuat!</p>
+                <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-green-800">
+                        ✅ <strong>Google Sheet telah dibuat</strong><br>
+                        Data presensi akan tersimpan otomatis saat peserta scan QR Code
+                    </p>
+                </div>
+            </div>
+            
+            <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block mb-6"></div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-blue-800 mb-2">📱 Instruksi untuk Peserta:</h3>
+                <ol class="text-sm text-blue-700 space-y-1 text-left">
+                    <li>1. Buka kamera smartphone</li>
+                    <li>2. Arahkan ke QR Code di atas</li>
+                    <li>3. Tap link yang muncul</li>
+                    <li>4. Login dengan Google</li>
+                    <li>5. Presensi tercatat otomatis!</li>
+                </ol>
+            </div>
+            
+            <div class="space-y-2">
+                <button id="close-session-btn" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400 transition-colors">
+                    🔒 Tutup Sesi Presensi
+                </button>
+                <button id="reset-btn" class="w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm transition-colors">
+                    ➕ Buat Sesi Baru
+                </button>
+                <button id="view-sheet-btn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 text-sm transition-colors">
+                    📊 Lihat Data Presensi
+                </button>
+            </div>
         </div>
     </div>
 
@@ -309,12 +381,20 @@
                 if (isLoading) {
                     button.disabled = true;
                     button.classList.add('loading');
-                    button.textContent = 'Memproses...';
+                    const btnText = button.querySelector('.btn-text') || button;
+                    btnText.textContent = 'Memproses...';
                 } else {
                     button.disabled = false;
                     button.classList.remove('loading');
-                    button.textContent = originalText;
+                    const btnText = button.querySelector('.btn-text') || button;
+                    btnText.textContent = originalText;
                 }
+            },
+
+            // Open Google Sheets
+            openGoogleSheet(sheetName) {
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/create?name=${encodeURIComponent(sheetName)}`;
+                window.open(sheetUrl, '_blank');
             }
         };
 
@@ -418,14 +498,19 @@
             state.currentActivityName = sanitizedInput;
             state.isProcessing = true;
             
-            utils.setButtonLoading(generateBtn, true, 'Buat QR Code');
+            utils.setButtonLoading(generateBtn, true, '🚀 Buat QR Code & Google Sheet');
 
             try {
+                // Show progress
+                utils.showToast('Membuat Google Sheet...', 'success');
+                
                 await callAppsScript({ 
                     action: 'createSheet', 
                     sheetName: state.currentActivityName, 
                     token: state.googleIdToken 
                 });
+
+                utils.showToast('Google Sheet berhasil dibuat!', 'success');
 
                 // Generate QR code with optimized URL
                 const formUrl = new URL(window.location.href);
@@ -487,14 +572,14 @@
 
                 console.log('Switching to QR code view...');
                 showView('qrcode');
-                utils.showToast('QR Code berhasil dibuat!', 'success');
+                utils.showToast('QR Code dan Google Sheet siap digunakan!', 'success');
 
             } catch (error) {
                 utils.showToast(utils.formatError(error), 'error');
                 console.error('Error creating session:', error);
             } finally {
                 state.isProcessing = false;
-                utils.setButtonLoading(generateBtn, false, 'Buat QR Code');
+                utils.setButtonLoading(generateBtn, false, '🚀 Buat QR Code & Google Sheet');
             }
         }
         // Enhanced close session handler
@@ -621,14 +706,27 @@
                 });
 
                 mainContainer.innerHTML = `
-                    <div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6">
-                        <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
+                    <div class="text-center">
+                        <div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6">
+                            <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <h1 class="text-2xl font-bold text-slate-800 mb-2">✅ Presensi Berhasil!</h1>
+                        <p class="text-slate-600 text-lg mb-4">Terima kasih, <strong>${utils.sanitizeInput(result.data)}</strong>.<br>Kehadiran Anda telah dicatat.</p>
+                        
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <p class="text-sm text-green-800">
+                                🗃️ <strong>Data tersimpan di Google Sheets</strong><br>
+                                Waktu: ${new Date().toLocaleString('id-ID')}<br>
+                                ${location.latitude ? `📍 Lokasi: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` : '📍 Lokasi: Tidak terdeteksi'}
+                            </p>
+                        </div>
+                        
+                        <p class="text-xs text-slate-400">
+                            Anda dapat menutup halaman ini sekarang
+                        </p>
                     </div>
-                    <h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1>
-                    <p class="text-slate-600 text-lg">Terima kasih, <strong>${utils.sanitizeInput(result.data)}</strong>. Kehadiran Anda telah dicatat.</p>
-                    <p class="text-sm text-slate-500 mt-4">Waktu: ${new Date().toLocaleString('id-ID')}</p>
                 `;
 
             } catch (error) {
@@ -676,9 +774,32 @@
                 // Participant view
                 document.body.innerHTML = `
                     <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
-                        <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${utils.sanitizeInput(decodeURIComponent(activityName))}</h1>
-                        <p class="text-slate-500 mb-8">Login dengan Google untuk mencatat kehadiran Anda.</p>
+                        <div class="mb-6">
+                            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                </svg>
+                            </div>
+                            <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${utils.sanitizeInput(decodeURIComponent(activityName))}</h1>
+                            <p class="text-slate-500 mb-2">Presensi Digital</p>
+                            <p class="text-sm text-slate-400">Login dengan Google untuk mencatat kehadiran Anda</p>
+                        </div>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                            <h3 class="font-semibold text-blue-800 mb-2">📝 Cara Presensi:</h3>
+                            <ol class="text-sm text-blue-700 space-y-1 text-left">
+                                <li>1. Klik tombol "Login dengan Google"</li>
+                                <li>2. Pilih akun Google Anda</li>
+                                <li>3. Lokasi akan dideteksi otomatis</li>
+                                <li>4. Presensi tercatat ke Google Sheets</li>
+                            </ol>
+                        </div>
+                        
                         <div id="participant-signin-button"></div>
+                        
+                        <div class="mt-4 text-xs text-slate-400">
+                            🔒 Data Anda aman dan hanya digunakan untuk presensi
+                        </div>
                     </div>
                 `;
                 
@@ -712,19 +833,72 @@
                             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
                         </div>
                         <div id="setup-view" class="hidden">
-                            <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
-                            <p class="text-slate-500 mb-6">Masukkan nama kegiatan untuk membuat QR Code.</p>
+                            <div class="mb-6">
+                                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                </div>
+                                <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
+                                <p class="text-slate-500 mb-4">Masukkan nama kegiatan untuk membuat QR Code presensi</p>
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                                    <p class="text-sm text-yellow-800">
+                                        💡 <strong>Info:</strong> Google Sheet akan dibuat otomatis dengan nama sesuai kegiatan Anda
+                                    </p>
+                                </div>
+                            </div>
                             <form id="activity-form">
-                                <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4" placeholder="Contoh: Seminar Digital Marketing" required>
-                                <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400">Buat QR Code</button>
+                                <div class="mb-4">
+                                    <label for="activity-name" class="block text-sm font-medium text-slate-700 mb-2">Nama Kegiatan</label>
+                                    <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Contoh: Seminar Digital Marketing 2025" required maxlength="100">
+                                    <p class="text-xs text-slate-500 mt-1">Sheet akan dibuat dengan nama ini di Google Drive Anda</p>
+                                </div>
+                                <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors">
+                                    <span class="btn-text">🚀 Buat QR Code & Google Sheet</span>
+                                </button>
                             </form>
                         </div>
                         <div id="qrcode-view" class="hidden">
-                            <h1 id="qrcode-title" class="text-3xl font-bold text-slate-800 break-words"></h1>
-                            <p class="text-slate-500 mt-2 mb-6">Peserta dapat memindai kode ini untuk presensi.</p>
-                            <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block"></div>
-                            <button id="close-session-btn" class="mt-8 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400">Tutup Sesi Presensi</button>
-                            <button id="reset-btn" class="mt-4 w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm">Buat Sesi Baru</button>
+                            <div class="mb-6">
+                                <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                                <h1 id="qrcode-title" class="text-2xl font-bold text-slate-800 break-words mb-2"></h1>
+                                <p class="text-slate-500 mb-2">QR Code berhasil dibuat!</p>
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                                    <p class="text-sm text-green-800">
+                                        ✅ <strong>Google Sheet telah dibuat</strong><br>
+                                        Data presensi akan tersimpan otomatis saat peserta scan QR Code
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block mb-6"></div>
+                            
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <h3 class="font-semibold text-blue-800 mb-2">📱 Instruksi untuk Peserta:</h3>
+                                <ol class="text-sm text-blue-700 space-y-1 text-left">
+                                    <li>1. Buka kamera smartphone</li>
+                                    <li>2. Arahkan ke QR Code di atas</li>
+                                    <li>3. Tap link yang muncul</li>
+                                    <li>4. Login dengan Google</li>
+                                    <li>5. Presensi tercatat otomatis!</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <button id="close-session-btn" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400 transition-colors">
+                                    🔒 Tutup Sesi Presensi
+                                </button>
+                                <button id="reset-btn" class="w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm transition-colors">
+                                    ➕ Buat Sesi Baru
+                                </button>
+                                <button id="view-sheet-btn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 text-sm transition-colors">
+                                    📊 Lihat Data Presensi
+                                </button>
+                            </div>
                         </div>
                     `;
                 }
@@ -783,6 +957,21 @@
                     if (activityInput) {
                         activityInput.value = '';
                         activityInput.focus();
+                    }
+                });
+            }
+
+            // View sheet button
+            const viewSheetBtn = document.getElementById('view-sheet-btn');
+            if (viewSheetBtn) {
+                viewSheetBtn.addEventListener('click', () => {
+                    if (state.currentActivityName) {
+                        // Open Google Drive to find the sheet
+                        const driveUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(state.currentActivityName)}%20type:spreadsheet`;
+                        window.open(driveUrl, '_blank');
+                        utils.showToast('Membuka Google Drive untuk mencari sheet...', 'success');
+                    } else {
+                        utils.showToast('Nama kegiatan tidak ditemukan', 'error');
                     }
                 });
             }
