@@ -432,6 +432,8 @@
                 formUrl.search = '';
                 formUrl.searchParams.set('activity', encodeURIComponent(state.currentActivityName));
                 
+                console.log('Generating QR Code for URL:', formUrl.href);
+                
                 const qrcodeTitle = document.getElementById('qrcode-title');
                 const qrcodeContainer = document.getElementById('qrcode');
                 
@@ -441,22 +443,41 @@
                     
                     // Check if QRCode library is loaded
                     if (typeof QRCode !== 'undefined') {
-                        // Generate QR code with error correction
-                        new QRCode(qrcodeContainer, { 
-                            text: formUrl.href, 
-                            width: 256, 
-                            height: 256,
-                            correctLevel: QRCode.CorrectLevel.M
-                        });
+                        console.log('QRCode library found, generating QR code...');
+                        try {
+                            // Generate QR code with error correction
+                            new QRCode(qrcodeContainer, { 
+                                text: formUrl.href, 
+                                width: 256, 
+                                height: 256,
+                                correctLevel: QRCode.CorrectLevel.M
+                            });
+                            console.log('QR Code generated successfully');
+                        } catch (qrError) {
+                            console.error('Error generating QR Code:', qrError);
+                            // Fallback to URL display
+                            qrcodeContainer.innerHTML = `
+                                <div class="bg-slate-100 p-4 rounded-lg">
+                                    <p class="text-sm text-slate-600 mb-2">QR Code gagal dibuat. Gunakan URL berikut:</p>
+                                    <div class="bg-white p-3 rounded border text-xs break-all font-mono">
+                                        ${formUrl.href}
+                                    </div>
+                                    <button onclick="navigator.clipboard.writeText('${formUrl.href}').then(() => alert('URL disalin!'))" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                                        Salin URL
+                                    </button>
+                                </div>
+                            `;
+                        }
                     } else {
+                        console.warn('QRCode library not loaded, showing URL fallback');
                         // Fallback: show URL as text if QRCode library failed to load
                         qrcodeContainer.innerHTML = `
                             <div class="bg-slate-100 p-4 rounded-lg">
-                                <p class="text-sm text-slate-600 mb-2">QR Code tidak dapat dimuat. Gunakan URL berikut:</p>
+                                <p class="text-sm text-slate-600 mb-2">QR Code library tidak dimuat. Gunakan URL berikut:</p>
                                 <div class="bg-white p-3 rounded border text-xs break-all font-mono">
                                     ${formUrl.href}
                                 </div>
-                                <button onclick="navigator.clipboard.writeText('${formUrl.href}')" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                                <button onclick="navigator.clipboard.writeText('${formUrl.href}').then(() => alert('URL disalin!'))" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
                                     Salin URL
                                 </button>
                             </div>
@@ -464,6 +485,7 @@
                     }
                 }
 
+                console.log('Switching to QR code view...');
                 showView('qrcode');
                 utils.showToast('QR Code berhasil dibuat!', 'success');
 
@@ -629,21 +651,19 @@
 
         // Initialize application
         function initializeApp() {
-            // Check if Google Sign-In is loaded
-            if (typeof google === 'undefined' || !google.accounts) {
-                console.log('Google Sign-In library not loaded yet, retrying...');
-                setTimeout(initializeApp, 100);
-                return;
-            }
-
+            console.log('Initializing application...');
+            
             // Check client ID configuration
             if (CONFIG.CLIENT_ID.startsWith('MASUKKAN') || CONFIG.CLIENT_ID.length < 10) {
-                document.getElementById('main-container').innerHTML = `
-                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-                        <p class="font-bold">Konfigurasi Belum Selesai</p>
-                        <p>Anda belum mengganti placeholder <strong>CLIENT_ID</strong> di dalam file index.html. Silakan salin Client ID Anda dari Google Cloud Console dan tempelkan ke dalam kode.</p>
-                    </div>
-                `;
+                const mainContainer = document.getElementById('main-container');
+                if (mainContainer) {
+                    mainContainer.innerHTML = `
+                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                            <p class="font-bold">Konfigurasi Belum Selesai</p>
+                            <p>Anda belum mengganti placeholder <strong>CLIENT_ID</strong> di dalam file index.html. Silakan salin Client ID Anda dari Google Cloud Console dan tempelkan ke dalam kode.</p>
+                        </div>
+                    `;
+                }
                 return;
             }
 
@@ -652,6 +672,7 @@
             const activityName = urlParams.get('activity');
             
             if (activityName) {
+                console.log('Initializing participant view for:', activityName);
                 // Participant view
                 document.body.innerHTML = `
                     <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
@@ -670,6 +691,7 @@
                         document.getElementById('participant-signin-button'), 
                         { theme: 'outline', size: 'large' }
                     );
+                    console.log('Participant Google Sign-In initialized');
                 } catch (error) {
                     console.error('Error initializing participant Google Sign-In:', error);
                     document.getElementById('participant-signin-button').innerHTML = `
@@ -679,7 +701,37 @@
                     `;
                 }
             } else {
-                // Organizer view
+                console.log('Initializing organizer view');
+                // Organizer view - restore original content and setup
+                const mainContainer = document.getElementById('main-container');
+                if (mainContainer) {
+                    mainContainer.innerHTML = `
+                        <div id="login-view">
+                            <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
+                            <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
+                            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
+                        </div>
+                        <div id="setup-view" class="hidden">
+                            <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
+                            <p class="text-slate-500 mb-6">Masukkan nama kegiatan untuk membuat QR Code.</p>
+                            <form id="activity-form">
+                                <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4" placeholder="Contoh: Seminar Digital Marketing" required>
+                                <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400">Buat QR Code</button>
+                            </form>
+                        </div>
+                        <div id="qrcode-view" class="hidden">
+                            <h1 id="qrcode-title" class="text-3xl font-bold text-slate-800 break-words"></h1>
+                            <p class="text-slate-500 mt-2 mb-6">Peserta dapat memindai kode ini untuk presensi.</p>
+                            <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block"></div>
+                            <button id="close-session-btn" class="mt-8 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400">Tutup Sesi Presensi</button>
+                            <button id="reset-btn" class="mt-4 w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm">Buat Sesi Baru</button>
+                        </div>
+                    `;
+                }
+                
+                // Re-setup event listeners after content restoration
+                setupEventListeners();
+                
                 try {
                     google.accounts.id.initialize({ 
                         client_id: CONFIG.CLIENT_ID, 
@@ -692,6 +744,7 @@
                             theme: 'outline', 
                             size: 'large' 
                         });
+                        console.log('Organizer Google Sign-In initialized');
                     }
                 } catch (error) {
                     console.error('Error initializing organizer Google Sign-In:', error);
@@ -782,24 +835,32 @@
 
         // Enhanced loading with retry mechanism
         let initRetryCount = 0;
-        const maxInitRetries = 10;
+        const maxInitRetries = 20; // Increased retry count
 
         function waitForLibraries() {
             return new Promise((resolve, reject) => {
                 const checkLibraries = () => {
-                    // Check if all required libraries are loaded
-                    const tailwindLoaded = document.querySelector('script[src*="tailwindcss"]') && 
-                                         (window.tailwind || document.documentElement.className.includes('tw-'));
+                    // Check Google Sign-In library
                     const googleLoaded = typeof google !== 'undefined' && google.accounts;
+                    
+                    // Check QRCode library
                     const qrCodeLoaded = typeof QRCode !== 'undefined';
+                    
+                    console.log('Library check:', { 
+                        google: googleLoaded, 
+                        qrCode: qrCodeLoaded,
+                        retry: initRetryCount 
+                    });
 
                     if (googleLoaded && qrCodeLoaded) {
+                        console.log('All libraries loaded successfully');
                         resolve();
                     } else if (initRetryCount >= maxInitRetries) {
-                        reject(new Error('Failed to load required libraries'));
+                        console.error('Failed to load libraries after', maxInitRetries, 'retries');
+                        reject(new Error(`Failed to load required libraries. Missing: ${!googleLoaded ? 'Google ' : ''}${!qrCodeLoaded ? 'QRCode' : ''}`));
                     } else {
                         initRetryCount++;
-                        setTimeout(checkLibraries, 200);
+                        setTimeout(checkLibraries, 300);
                     }
                 };
                 
