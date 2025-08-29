@@ -4,14 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generator Presensi Dinamis</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="description" content="Aplikasi presensi digital dengan QR Code dan Google Sign-In">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+    
+    <!-- Lazy load non-critical scripts -->
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js" defer></script>
+    
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .hidden { display: none; }
-        #qrcode { display: flex; justify-content: center; align-items: center; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            line-height: 1.6;
+        }
+        .hidden { display: none !important; }
+        .fade-in { 
+            animation: fadeIn 0.3s ease-in-out; 
+        }
+        .loading {
+            position: relative;
+            pointer-events: none;
+        }
+        .loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+            0% { transform: translateY(-50%) rotate(0deg); }
+            100% { transform: translateY(-50%) rotate(360deg); }
+        }
+        #qrcode { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        .error-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        .success-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #0f172a; }
+        }
     </style>
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
@@ -42,144 +117,495 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZrpZvulJyPypwPxvbu8HeonNQ2FbhlBSpH28zF-3fb82F2qFcxuE1llUoB2OLpmpr6A/exec';
-        const CLIENT_ID = '172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com';
+        // Configuration constants
+        const CONFIG = {
+            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwZrpZvulJyPypwPxvbu8HeonNQ2FbhlBSpH28zF-3fb82F2qFcxuE1llUoB2OLpmpr6A/exec',
+            CLIENT_ID: '172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com',
+            DEBOUNCE_DELAY: 300,
+            REQUEST_TIMEOUT: 30000
+        };
 
-        let googleIdToken = null;
-        let currentActivityName = '';
-        const views = { login: document.getElementById('login-view'), setup: document.getElementById('setup-view'), qrcode: document.getElementById('qrcode-view') };
+        // Global state
+        const state = {
+            googleIdToken: null,
+            currentActivityName: '',
+            isProcessing: false,
+            retryCount: 0,
+            maxRetries: 3
+        };
 
+        // Utility functions
+        const utils = {
+            // Debounce function to prevent rapid calls
+            debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            },
+
+            // Show toast notifications
+            showToast(message, type = 'error') {
+                const existingToast = document.querySelector('.error-toast, .success-toast');
+                if (existingToast) existingToast.remove();
+
+                const toast = document.createElement('div');
+                toast.className = type === 'error' ? 'error-toast' : 'success-toast';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+
+                setTimeout(() => toast.remove(), 4000);
+            },
+
+            // Sanitize input
+            sanitizeInput(input) {
+                return input.trim().replace(/[<>\"']/g, '');
+            },
+
+            // Format error messages
+            formatError(error) {
+                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                    return 'Koneksi bermasalah. Periksa internet Anda dan coba lagi.';
+                }
+                if (error.message.includes('Network Error')) {
+                    return 'Gagal terhubung ke server. Coba lagi dalam beberapa saat.';
+                }
+                return error.message || 'Terjadi kesalahan tidak dikenal.';
+            },
+
+            // Add loading state to button
+            setButtonLoading(button, isLoading, originalText) {
+                if (isLoading) {
+                    button.disabled = true;
+                    button.classList.add('loading');
+                    button.textContent = 'Memproses...';
+                } else {
+                    button.disabled = false;
+                    button.classList.remove('loading');
+                    button.textContent = originalText;
+                }
+            }
+        };
+
+        // View management
         function showView(viewName) {
-            Object.values(views).forEach(view => view.classList.add('hidden'));
-            views[viewName].classList.remove('hidden');
+            const views = {
+                login: document.getElementById('login-view'),
+                setup: document.getElementById('setup-view'),
+                qrcode: document.getElementById('qrcode-view')
+            };
+
+            Object.values(views).forEach(view => {
+                if (view) {
+                    view.classList.add('hidden');
+                    view.classList.remove('fade-in');
+                }
+            });
+            
+            if (views[viewName]) {
+                views[viewName].classList.remove('hidden');
+                views[viewName].classList.add('fade-in');
+            }
         }
 
+        // Google Sign-In handler
         function handleCredentialResponse(response) {
-            googleIdToken = response.credential;
+            state.googleIdToken = response.credential;
             showView('setup');
         }
 
+        // Enhanced API call with retry mechanism
         async function callAppsScript(payload) {
-            // Kode callAppsScript tetap sama
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
+
             try {
-                const res = await fetch(SCRIPT_URL, {
+                const response = await fetch(CONFIG.SCRIPT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    headers: { 
+                        'Content-Type': 'text/plain;charset=utf-8',
+                        'Cache-Control': 'no-cache'
+                    },
                     body: JSON.stringify(payload),
-                    redirect: "follow"
+                    redirect: "follow",
+                    signal: controller.signal
                 });
-                if (!res.ok) throw new Error(`Server Error: Status ${res.status}`);
-                const result = await res.json();
-                if (result.status !== 'success') throw new Error(`Script Error: ${result.message}`);
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.status !== 'success') {
+                    throw new Error(result.message || 'Unknown server error');
+                }
+
                 return result;
             } catch (error) {
-                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                    throw new Error('Network Error: Gagal terhubung ke server. Periksa SCRIPT_URL atau koneksi internet.');
+                clearTimeout(timeoutId);
+                
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout. Silakan coba lagi.');
                 }
+                
+                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                    throw new Error('Network Error: Gagal terhubung ke server. Periksa koneksi internet Anda.');
+                }
+                
                 throw error;
             }
         }
 
-        document.getElementById('activity-form').addEventListener('submit', async function(e) {
+        // Enhanced form submission with validation
+        async function handleFormSubmit(e) {
             e.preventDefault();
-            currentActivityName = document.getElementById('activity-name').value.trim();
+            
+            if (state.isProcessing) return;
+            
+            const activityNameInput = document.getElementById('activity-name');
             const generateBtn = document.getElementById('generate-btn');
-            generateBtn.disabled = true;
-            generateBtn.textContent = 'Membuat sheet...';
+            
+            if (!activityNameInput || !generateBtn) return;
+            
+            const rawInput = activityNameInput.value;
+            const sanitizedInput = utils.sanitizeInput(rawInput);
+            
+            if (!sanitizedInput || sanitizedInput.length < 3) {
+                utils.showToast('Nama kegiatan minimal 3 karakter', 'error');
+                activityNameInput.focus();
+                return;
+            }
+
+            if (sanitizedInput.length > 100) {
+                utils.showToast('Nama kegiatan maksimal 100 karakter', 'error');
+                return;
+            }
+
+            state.currentActivityName = sanitizedInput;
+            state.isProcessing = true;
+            
+            utils.setButtonLoading(generateBtn, true, 'Buat QR Code');
+
             try {
-                await callAppsScript({ action: 'createSheet', sheetName: currentActivityName, token: googleIdToken });
+                await callAppsScript({ 
+                    action: 'createSheet', 
+                    sheetName: state.currentActivityName, 
+                    token: state.googleIdToken 
+                });
+
+                // Generate QR code with optimized URL
                 const formUrl = new URL(window.location.href);
                 formUrl.search = '';
-                formUrl.searchParams.set('activity', currentActivityName);
-                document.getElementById('qrcode-title').textContent = currentActivityName;
+                formUrl.searchParams.set('activity', encodeURIComponent(state.currentActivityName));
+                
+                const qrcodeTitle = document.getElementById('qrcode-title');
                 const qrcodeContainer = document.getElementById('qrcode');
-                qrcodeContainer.innerHTML = '';
-                new QRCode(qrcodeContainer, { text: formUrl.href, width: 256, height: 256 });
+                
+                if (qrcodeTitle) qrcodeTitle.textContent = state.currentActivityName;
+                if (qrcodeContainer) {
+                    qrcodeContainer.innerHTML = '';
+                    
+                    // Generate QR code with error correction
+                    new QRCode(qrcodeContainer, { 
+                        text: formUrl.href, 
+                        width: 256, 
+                        height: 256,
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+
                 showView('qrcode');
+                utils.showToast('QR Code berhasil dibuat!', 'success');
+
             } catch (error) {
-                alert('Gagal membuat sesi:\n\n' + error.message);
+                utils.showToast(utils.formatError(error), 'error');
+                console.error('Error creating session:', error);
             } finally {
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Buat QR Code';
+                state.isProcessing = false;
+                utils.setButtonLoading(generateBtn, false, 'Buat QR Code');
             }
-        });
-        
-        document.getElementById('close-session-btn').addEventListener('click', async function() {
-            if (!confirm(`Apakah Anda yakin ingin menutup sesi presensi untuk "${currentActivityName}"? Aksi ini tidak dapat dibatalkan.`)) return;
-            this.disabled = true;
-            this.textContent = 'Menutup...';
+        }
+        // Enhanced close session handler
+        async function handleCloseSession() {
+            if (!confirm(`Apakah Anda yakin ingin menutup sesi presensi untuk "${state.currentActivityName}"? Aksi ini tidak dapat dibatalkan.`)) {
+                return;
+            }
+
+            if (state.isProcessing) return;
+            state.isProcessing = true;
+
+            const closeSessionBtn = document.getElementById('close-session-btn');
+            if (!closeSessionBtn) return;
+
+            utils.setButtonLoading(closeSessionBtn, true, 'Tutup Sesi Presensi');
+
             try {
-                const result = await callAppsScript({ action: 'closeSheet', sheetName: currentActivityName, token: googleIdToken });
-                alert(result.message);
-                this.textContent = 'Sesi Telah Ditutup';
+                const result = await callAppsScript({ 
+                    action: 'closeSheet', 
+                    sheetName: state.currentActivityName, 
+                    token: state.googleIdToken 
+                });
+
+                utils.showToast(result.message, 'success');
+                closeSessionBtn.textContent = 'Sesi Telah Ditutup';
+                closeSessionBtn.disabled = true;
+
             } catch (error) {
-                alert('Gagal menutup sesi:\n\n' + error.message);
-                this.disabled = false;
-                this.textContent = 'Tutup Sesi Presensi';
+                utils.showToast(utils.formatError(error), 'error');
+                utils.setButtonLoading(closeSessionBtn, false, 'Tutup Sesi Presensi');
+                console.error('Error closing session:', error);
+            } finally {
+                state.isProcessing = false;
             }
-        });
+        }
 
-        document.getElementById('reset-btn').addEventListener('click', () => { showView('setup'); });
-
+        // Enhanced location getter with timeout
         function getUserLocation() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
-                    return resolve({ latitude: null, longitude: null, timestamp: Date.now() });
+                    return resolve({ 
+                        latitude: null, 
+                        longitude: null, 
+                        timestamp: Date.now(),
+                        error: 'Geolocation not supported'
+                    });
                 }
+
+                const timeoutId = setTimeout(() => {
+                    resolve({ 
+                        latitude: null, 
+                        longitude: null, 
+                        timestamp: Date.now(),
+                        error: 'Location timeout'
+                    });
+                }, 10000); // 10 second timeout
+
                 navigator.geolocation.getCurrentPosition(
-                    (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, timestamp: position.timestamp }),
-                    () => resolve({ latitude: null, longitude: null, timestamp: Date.now() })
+                    (position) => {
+                        clearTimeout(timeoutId);
+                        resolve({ 
+                            latitude: position.coords.latitude, 
+                            longitude: position.coords.longitude, 
+                            timestamp: position.timestamp,
+                            accuracy: position.coords.accuracy
+                        });
+                    },
+                    (error) => {
+                        clearTimeout(timeoutId);
+                        resolve({ 
+                            latitude: null, 
+                            longitude: null, 
+                            timestamp: Date.now(),
+                            error: error.message
+                        });
+                    },
+                    {
+                        enableHighAccuracy: false,
+                        timeout: 10000,
+                        maximumAge: 300000 // 5 minutes cache
+                    }
                 );
             });
         }
 
+        // Enhanced participant sign-in handler
         async function handleParticipantSignIn(response) {
             const urlParams = new URLSearchParams(window.location.search);
             const activityName = urlParams.get('activity');
             const participantToken = response.credential;
             const mainContainer = document.getElementById('participant-view');
-            mainContainer.innerHTML = `<p class="text-lg text-slate-600">Mendapatkan lokasi Anda...</p>`;
+
+            if (!activityName) {
+                mainContainer.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <strong>Error:</strong> Nama kegiatan tidak ditemukan dalam URL.
+                    </div>
+                `;
+                return;
+            }
+
             try {
+                mainContainer.innerHTML = `
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                    <p class="text-lg text-slate-600">Mendapatkan lokasi Anda...</p>
+                `;
+
                 const location = await getUserLocation();
-                mainContainer.innerHTML = `<p class="text-lg text-slate-600">Memproses presensi...</p>`;
-                const result = await callAppsScript({ action: 'recordAttendance', sheetName: decodeURIComponent(activityName), token: participantToken, location: location });
-                mainContainer.innerHTML = `<div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6"><svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1><p class="text-slate-600 text-lg">Terima kasih, <strong>${result.data}</strong>. Kehadiran Anda telah dicatat.</p>`;
+                
+                mainContainer.innerHTML = `
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                    <p class="text-lg text-slate-600">Memproses presensi...</p>
+                `;
+
+                const result = await callAppsScript({ 
+                    action: 'recordAttendance', 
+                    sheetName: decodeURIComponent(activityName), 
+                    token: participantToken, 
+                    location: location 
+                });
+
+                mainContainer.innerHTML = `
+                    <div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6">
+                        <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1>
+                    <p class="text-slate-600 text-lg">Terima kasih, <strong>${utils.sanitizeInput(result.data)}</strong>. Kehadiran Anda telah dicatat.</p>
+                    <p class="text-sm text-slate-500 mt-4">Waktu: ${new Date().toLocaleString('id-ID')}</p>
+                `;
+
             } catch (error) {
-                mainContainer.innerHTML = `<p class="text-red-500 text-lg">❌ Gagal: ${error.message}</p>`;
+                mainContainer.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span><strong>Gagal:</strong> ${utils.formatError(error)}</span>
+                        </div>
+                        <button onclick="location.reload()" class="mt-3 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors">
+                            Coba Lagi
+                        </button>
+                    </div>
+                `;
+                console.error('Attendance error:', error);
             }
         }
 
-        window.onload = function() {
-            // [FIX] Memeriksa apakah CLIENT_ID sudah diisi
-            if (CLIENT_ID.startsWith('MASUKKAN') || CLIENT_ID.length < 10) {
+        // Initialize application
+        function initializeApp() {
+            // Check client ID configuration
+            if (CONFIG.CLIENT_ID.startsWith('MASUKKAN') || CONFIG.CLIENT_ID.length < 10) {
                 document.getElementById('main-container').innerHTML = `
                     <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
                         <p class="font-bold">Konfigurasi Belum Selesai</p>
                         <p>Anda belum mengganti placeholder <strong>CLIENT_ID</strong> di dalam file index.html. Silakan salin Client ID Anda dari Google Cloud Console dan tempelkan ke dalam kode.</p>
                     </div>
                 `;
-                return; // Menghentikan eksekusi skrip lebih lanjut
+                return;
             }
 
-            // Inisialisasi Google Sign-In untuk Panitia
-            google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleCredentialResponse });
-            google.accounts.id.renderButton(document.querySelector('.g_id_signin'), { theme: 'outline', size: 'large' });
-
+            // Check if this is participant view
             const urlParams = new URLSearchParams(window.location.search);
             const activityName = urlParams.get('activity');
+            
             if (activityName) {
+                // Participant view
                 document.body.innerHTML = `
-                    <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
-                        <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1>
+                    <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
+                        <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${utils.sanitizeInput(decodeURIComponent(activityName))}</h1>
                         <p class="text-slate-500 mb-8">Login dengan Google untuk mencatat kehadiran Anda.</p>
                         <div id="participant-signin-button"></div>
                     </div>
                 `;
                 
-                google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleParticipantSignIn });
-                google.accounts.id.renderButton(document.getElementById('participant-signin-button'), { theme: 'outline', size: 'large' });
+                google.accounts.id.initialize({ 
+                    client_id: CONFIG.CLIENT_ID, 
+                    callback: handleParticipantSignIn 
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById('participant-signin-button'), 
+                    { theme: 'outline', size: 'large' }
+                );
+            } else {
+                // Organizer view
+                google.accounts.id.initialize({ 
+                    client_id: CONFIG.CLIENT_ID, 
+                    callback: handleCredentialResponse 
+                });
+                google.accounts.id.renderButton(
+                    document.querySelector('.g_id_signin'), 
+                    { theme: 'outline', size: 'large' }
+                );
             }
-        };
+        }
+
+        // Event listeners with error handling
+        function setupEventListeners() {
+            // Form submission with debouncing
+            const form = document.getElementById('activity-form');
+            if (form) {
+                form.addEventListener('submit', utils.debounce(handleFormSubmit, CONFIG.DEBOUNCE_DELAY));
+            }
+            
+            // Close session button
+            const closeBtn = document.getElementById('close-session-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', handleCloseSession);
+            }
+            
+            // Reset button
+            const resetBtn = document.getElementById('reset-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    showView('setup');
+                    const activityInput = document.getElementById('activity-name');
+                    if (activityInput) {
+                        activityInput.value = '';
+                        activityInput.focus();
+                    }
+                });
+            }
+
+            // Input validation
+            const activityInput = document.getElementById('activity-name');
+            if (activityInput) {
+                activityInput.addEventListener('input', (e) => {
+                    const value = e.target.value;
+                    if (value.length > 100) {
+                        e.target.value = value.substring(0, 100);
+                        utils.showToast('Maksimal 100 karakter', 'error');
+                    }
+                });
+            }
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const toasts = document.querySelectorAll('.error-toast, .success-toast');
+                    toasts.forEach(toast => toast.remove());
+                }
+            });
+
+            // Handle offline/online status
+            window.addEventListener('online', () => {
+                utils.showToast('Koneksi internet tersambung', 'success');
+            });
+
+            window.addEventListener('offline', () => {
+                utils.showToast('Koneksi internet terputus', 'error');
+            });
+        }
+
+        // Application startup
+        window.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+        });
+
+        window.addEventListener('load', () => {
+            initializeApp();
+        });
+
+        // Service Worker registration for future PWA features
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Uncomment when you add a service worker
+                // navigator.serviceWorker.register('/sw.js');
+            });
+        }
     </script>
 </body>
 </html>
