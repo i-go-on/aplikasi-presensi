@@ -7,28 +7,115 @@
     <meta name="description" content="Aplikasi presensi digital dengan QR Code dan Google Sign-In">
     <meta name="theme-color" content="#2563eb">
     
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    
     <!-- Preload critical resources -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
     
+    <!-- Use Tailwind via CDN with production optimization -->
+    <script>
+        // Suppress Tailwind CSS production warning in development
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') {
+            // Development mode - load Tailwind from CDN
+            const tailwindScript = document.createElement('script');
+            tailwindScript.src = 'https://cdn.tailwindcss.com';
+            tailwindScript.defer = true;
+            document.head.appendChild(tailwindScript);
+        } else {
+            // Production mode - use compiled CSS
+            const tailwindCSS = document.createElement('link');
+            tailwindCSS.rel = 'stylesheet';
+            tailwindCSS.href = 'https://cdn.tailwindcss.com'; // Replace with your compiled CSS in production
+            document.head.appendChild(tailwindCSS);
+        }
+    </script>
+    
     <!-- Lazy load non-critical scripts -->
-    <script src="https://cdn.tailwindcss.com" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js" defer></script>
     
     <style>
+        /* Base styles and fallbacks */
+        * {
+            box-sizing: border-box;
+        }
+        
         body { 
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
             line-height: 1.6;
+            margin: 0;
+            padding: 16px;
+            background-color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .hidden { display: none !important; }
+        
+        /* Fallback styles for when Tailwind hasn't loaded */
+        .container-fallback {
+            width: 100%;
+            max-width: 28rem;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .btn-fallback {
+            width: 100%;
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-fallback:hover {
+            background: #1d4ed8;
+        }
+        
+        .btn-fallback:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        
+        .input-fallback {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1.125rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .input-fallback:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .hidden { 
+            display: none !important; 
+        }
+        
         .fade-in { 
             animation: fadeIn 0.3s ease-in-out; 
         }
+        
         .loading {
             position: relative;
             pointer-events: none;
         }
+        
         .loading::after {
             content: '';
             position: absolute;
@@ -42,19 +129,23 @@
             top: 50%;
             transform: translateY(-50%);
         }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
         @keyframes spin {
             0% { transform: translateY(-50%) rotate(0deg); }
             100% { transform: translateY(-50%) rotate(360deg); }
         }
+        
         #qrcode { 
             display: flex; 
             justify-content: center; 
             align-items: center; 
         }
+        
         .error-toast {
             position: fixed;
             top: 20px;
@@ -66,7 +157,10 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 1000;
             animation: slideIn 0.3s ease-out;
+            max-width: 300px;
+            word-wrap: break-word;
         }
+        
         .success-toast {
             position: fixed;
             top: 20px;
@@ -78,14 +172,46 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 1000;
             animation: slideIn 0.3s ease-out;
+            max-width: 300px;
+            word-wrap: break-word;
         }
+        
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #2563eb;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
         /* Dark mode support */
         @media (prefers-color-scheme: dark) {
-            body { background-color: #0f172a; }
+            body { 
+                background-color: #0f172a; 
+            }
+            .container-fallback {
+                background: #1e293b;
+                color: white;
+            }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 640px) {
+            body {
+                padding: 8px;
+            }
+            .container-fallback {
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
@@ -313,13 +439,29 @@
                 if (qrcodeContainer) {
                     qrcodeContainer.innerHTML = '';
                     
-                    // Generate QR code with error correction
-                    new QRCode(qrcodeContainer, { 
-                        text: formUrl.href, 
-                        width: 256, 
-                        height: 256,
-                        correctLevel: QRCode.CorrectLevel.M
-                    });
+                    // Check if QRCode library is loaded
+                    if (typeof QRCode !== 'undefined') {
+                        // Generate QR code with error correction
+                        new QRCode(qrcodeContainer, { 
+                            text: formUrl.href, 
+                            width: 256, 
+                            height: 256,
+                            correctLevel: QRCode.CorrectLevel.M
+                        });
+                    } else {
+                        // Fallback: show URL as text if QRCode library failed to load
+                        qrcodeContainer.innerHTML = `
+                            <div class="bg-slate-100 p-4 rounded-lg">
+                                <p class="text-sm text-slate-600 mb-2">QR Code tidak dapat dimuat. Gunakan URL berikut:</p>
+                                <div class="bg-white p-3 rounded border text-xs break-all font-mono">
+                                    ${formUrl.href}
+                                </div>
+                                <button onclick="navigator.clipboard.writeText('${formUrl.href}')" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                                    Salin URL
+                                </button>
+                            </div>
+                        `;
+                    }
                 }
 
                 showView('qrcode');
@@ -487,6 +629,13 @@
 
         // Initialize application
         function initializeApp() {
+            // Check if Google Sign-In is loaded
+            if (typeof google === 'undefined' || !google.accounts) {
+                console.log('Google Sign-In library not loaded yet, retrying...');
+                setTimeout(initializeApp, 100);
+                return;
+            }
+
             // Check client ID configuration
             if (CONFIG.CLIENT_ID.startsWith('MASUKKAN') || CONFIG.CLIENT_ID.length < 10) {
                 document.getElementById('main-container').innerHTML = `
@@ -512,24 +661,49 @@
                     </div>
                 `;
                 
-                google.accounts.id.initialize({ 
-                    client_id: CONFIG.CLIENT_ID, 
-                    callback: handleParticipantSignIn 
-                });
-                google.accounts.id.renderButton(
-                    document.getElementById('participant-signin-button'), 
-                    { theme: 'outline', size: 'large' }
-                );
+                try {
+                    google.accounts.id.initialize({ 
+                        client_id: CONFIG.CLIENT_ID, 
+                        callback: handleParticipantSignIn 
+                    });
+                    google.accounts.id.renderButton(
+                        document.getElementById('participant-signin-button'), 
+                        { theme: 'outline', size: 'large' }
+                    );
+                } catch (error) {
+                    console.error('Error initializing participant Google Sign-In:', error);
+                    document.getElementById('participant-signin-button').innerHTML = `
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            <p>Error loading Google Sign-In. Please refresh the page.</p>
+                        </div>
+                    `;
+                }
             } else {
                 // Organizer view
-                google.accounts.id.initialize({ 
-                    client_id: CONFIG.CLIENT_ID, 
-                    callback: handleCredentialResponse 
-                });
-                google.accounts.id.renderButton(
-                    document.querySelector('.g_id_signin'), 
-                    { theme: 'outline', size: 'large' }
-                );
+                try {
+                    google.accounts.id.initialize({ 
+                        client_id: CONFIG.CLIENT_ID, 
+                        callback: handleCredentialResponse 
+                    });
+                    
+                    const signInButton = document.querySelector('.g_id_signin');
+                    if (signInButton) {
+                        google.accounts.id.renderButton(signInButton, { 
+                            theme: 'outline', 
+                            size: 'large' 
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error initializing organizer Google Sign-In:', error);
+                    const signInButton = document.querySelector('.g_id_signin');
+                    if (signInButton) {
+                        signInButton.innerHTML = `
+                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                                <p>Error loading Google Sign-In. Please refresh the page.</p>
+                            </div>
+                        `;
+                    }
+                }
             }
         }
 
@@ -590,13 +764,80 @@
             });
         }
 
-        // Application startup
+        // Application startup with loading states
         window.addEventListener('DOMContentLoaded', () => {
+            // Show loading indicator
+            const mainContainer = document.getElementById('main-container');
+            if (mainContainer) {
+                mainContainer.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner"></div>
+                        <p class="text-slate-600 mt-2">Memuat aplikasi...</p>
+                    </div>
+                `;
+            }
+            
             setupEventListeners();
         });
 
-        window.addEventListener('load', () => {
-            initializeApp();
+        // Enhanced loading with retry mechanism
+        let initRetryCount = 0;
+        const maxInitRetries = 10;
+
+        function waitForLibraries() {
+            return new Promise((resolve, reject) => {
+                const checkLibraries = () => {
+                    // Check if all required libraries are loaded
+                    const tailwindLoaded = document.querySelector('script[src*="tailwindcss"]') && 
+                                         (window.tailwind || document.documentElement.className.includes('tw-'));
+                    const googleLoaded = typeof google !== 'undefined' && google.accounts;
+                    const qrCodeLoaded = typeof QRCode !== 'undefined';
+
+                    if (googleLoaded && qrCodeLoaded) {
+                        resolve();
+                    } else if (initRetryCount >= maxInitRetries) {
+                        reject(new Error('Failed to load required libraries'));
+                    } else {
+                        initRetryCount++;
+                        setTimeout(checkLibraries, 200);
+                    }
+                };
+                
+                checkLibraries();
+            });
+        }
+
+        window.addEventListener('load', async () => {
+            try {
+                // Wait for all libraries to load
+                await waitForLibraries();
+                
+                // Initialize the application
+                initializeApp();
+                
+            } catch (error) {
+                console.error('Failed to initialize application:', error);
+                
+                const mainContainer = document.getElementById('main-container');
+                if (mainContainer) {
+                    mainContainer.innerHTML = `
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-bold">Gagal Memuat Aplikasi</p>
+                                    <p class="text-sm">Terjadi kesalahan saat memuat library yang diperlukan.</p>
+                                    <button onclick="location.reload()" class="mt-2 bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                        Muat Ulang
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
         });
 
         // Service Worker registration for future PWA features
