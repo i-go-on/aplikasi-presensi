@@ -1,257 +1,185 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Generator Presensi Dinamis</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .hidden { display: none; }
-    #qrcode { display: flex; justify-content: center; align-items: center; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Presensi Dinamis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hidden { display: none; }
+        #qrcode { display: flex; justify-content: center; align-items: center; }
+    </style>
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
-  <div id="main-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
-    <div id="login-view">
-      <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
-      <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
-      <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
+
+    <div id="main-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+        <!-- Kontainer untuk semua view -->
+        <div id="login-view">
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang</h1>
+            <p class="text-slate-500 mb-8">Login dengan akun Google Anda untuk memulai.</p>
+            <!-- [FIX] Elemen g_id_onload yang menyebabkan error telah dihapus -->
+            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
+        </div>
+        <div id="setup-view" class="hidden">
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
+            <p class="text-slate-500 mb-6">Masukkan nama kegiatan untuk membuat QR Code.</p>
+            <form id="activity-form">
+                <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4" placeholder="Contoh: Seminar Digital Marketing" required>
+                <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400">Buat QR Code</button>
+            </form>
+        </div>
+        <div id="qrcode-view" class="hidden">
+            <h1 id="qrcode-title" class="text-3xl font-bold text-slate-800 break-words"></h1>
+            <p class="text-slate-500 mt-2 mb-6">Peserta dapat memindai kode ini untuk presensi.</p>
+            <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block"></div>
+            <button id="close-session-btn" class="mt-8 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400">Tutup Sesi Presensi</button>
+            <button id="reset-btn" class="mt-4 w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm">Buat Sesi Baru</button>
+        </div>
     </div>
 
-    <div id="setup-view" class="hidden">
-      <h1 class="text-2xl font-bold text-slate-800 mb-2">Buat Sesi Presensi</h1>
-      <p class="text-slate-500 mb-6">Masukkan nama kegiatan untuk membuat QR Code.</p>
-      <form id="activity-form">
-        <input type="text" id="activity-name" class="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4" placeholder="Contoh: Seminar Digital Marketing" required />
-        <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400">Buat QR Code</button>
-      </form>
-    </div>
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwus64O5t1tVx0jNszuZV789eWLkCMwsg-dQWWzrC31AnvXgNUhkCSqcXME5_QZKour1A/exec';
+        const CLIENT_ID = '172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com';
 
-    <div id="qrcode-view" class="hidden">
-      <h1 id="qrcode-title" class="text-3xl font-bold text-slate-800 break-words"></h1>
-      <p class="text-slate-500 mt-2 mb-6">Peserta dapat memindai kode ini untuk presensi.</p>
-      <div id="qrcode" class="bg-white p-4 rounded-xl shadow-inner inline-block"></div>
-      <button id="close-session-btn" class="mt-8 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:bg-red-400">Tutup Sesi Presensi</button>
-      <button id="reset-btn" class="mt-4 w-full bg-slate-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700 text-sm">Buat Sesi Baru</button>
-    </div>
-  </div>
+        let googleIdToken = null;
+        let currentActivityName = '';
+        const views = { login: document.getElementById('login-view'), setup: document.getElementById('setup-view'), qrcode: document.getElementById('qrcode-view') };
 
-  <script>
-    // ==== KONFIGURASI ====
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWFbwOLhDNspV9YG-DpTAU8xi7WuficotPewWeO-2sM40yyQRDVn9bCgO6ypptOFaf/exec'; // <— ganti dengan URL deployment terbaru
-    const CLIENT_ID  = '172721035015-pu7jjsrm7572jm4vtrb36ussvj4ne5qa.apps.googleusercontent.com';
-
-    // ==== STATE ====
-    let googleIdToken = null;
-    let currentActivityName = '';
-    const views = {
-      login:  document.getElementById('login-view'),
-      setup:  document.getElementById('setup-view'),
-      qrcode: document.getElementById('qrcode-view')
-    };
-
-    // ==== UTIL ====
-    function showView(name) {
-      Object.values(views).forEach(v => v.classList.add('hidden'));
-      views[name].classList.remove('hidden');
-    }
-    function sanitizeName(name) {
-      return (name || '').replace(/[\[\]\:\*\?\/\\]/g, ' ').trim();
-    }
-    function buildActivityUrl(activity) {
-      const url = new URL(window.location.href);
-      url.search = '';
-      url.searchParams.set('activity', activity);
-      return url.href;
-    }
-
-    // Retry + Timeout helper
-    async function fetchWithRetry(url, options = {}, tries = 3, timeoutMs = 20000) {
-      let lastErr;
-      for (let attempt = 1; attempt <= tries; attempt++) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const res = await fetch(url, { ...options, signal: controller.signal, mode: 'cors', redirect: 'follow' });
-          clearTimeout(timer);
-          if (!res.ok) throw new Error(`Server Error: Status ${res.status}`);
-          const data = await res.json();
-          if (data.status !== 'success') throw new Error(`Script Error: ${data.message || 'Unknown error'}`);
-          return data;
-        } catch (err) {
-          clearTimeout(timer);
-          lastErr = err;
-          // Backoff sederhana
-          await new Promise(r => setTimeout(r, 400 * attempt));
+        function showView(viewName) {
+            Object.values(views).forEach(view => view.classList.add('hidden'));
+            views[viewName].classList.remove('hidden');
         }
-      }
-      throw lastErr;
-    }
 
-    // Panggilan ke Apps Script
- async function callAppsScript(payload) {
-  try {
-    return await fetchWithRetry(SCRIPT_URL, {
-      method: 'POST',
-      // Penting: text/plain agar tidak memicu preflight
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      throw new Error('Timeout: Server tidak merespons. Cek jaringan/URL deployment.');
-    }
-    if (error instanceof TypeError && /fetch/i.test(error.message)) {
-      throw new Error('Network Error: Gagal terhubung ke server. Periksa SCRIPT_URL atau koneksi internet.');
-    }
-    throw error;
-  }
-}
-
-
-    // ==== GOOGLE ID (GSI) ====
-    let gsiInitialized = false;
-    function initGsiForOrganizer() {
-      if (gsiInitialized) return;
-      google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredentialResponse
-      });
-      google.accounts.id.renderButton(
-        document.querySelector('.g_id_signin'),
-        { theme: 'outline', size: 'large' }
-      );
-      gsiInitialized = true;
-    }
-    function handleCredentialResponse(response) {
-      googleIdToken = response.credential;
-      showView('setup');
-    }
-
-    // ==== PARTICIPANT FLOW ====
-    function getUserLocation() {
-      return new Promise((resolve) => {
-        if (!navigator.geolocation) {
-          return resolve({ latitude: null, longitude: null, timestamp: Date.now() });
+        function handleCredentialResponse(response) {
+            googleIdToken = response.credential;
+            showView('setup');
         }
-        navigator.geolocation.getCurrentPosition(
-          pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, timestamp: pos.timestamp }),
-          () => resolve({ latitude: null, longitude: null, timestamp: Date.now() }),
-          { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 }
-        );
-      });
-    }
-    async function handleParticipantSignIn(response) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const activityName = urlParams.get('activity');
-      const participantToken = response.credential;
-      const main = document.getElementById('participant-view');
 
-      main.innerHTML = `<p class="text-lg text-slate-600">Mendapatkan lokasi Anda...</p>`;
-      try {
-        const location = await getUserLocation();
-        main.innerHTML = `<p class="text-lg text-slate-600">Memproses presensi...</p>`;
-        const result = await callAppsScript({
-          action: 'recordAttendance',
-          sheetName: decodeURIComponent(activityName || ''),
-          token: participantToken,
-          location
+        async function callAppsScript(payload) {
+            // Kode callAppsScript tetap sama
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload),
+                    redirect: "follow"
+                });
+                if (!res.ok) throw new Error(`Server Error: Status ${res.status}`);
+                const result = await res.json();
+                if (result.status !== 'success') throw new Error(`Script Error: ${result.message}`);
+                return result;
+            } catch (error) {
+                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                    throw new Error('Network Error: Gagal terhubung ke server. Periksa SCRIPT_URL atau koneksi internet.');
+                }
+                throw error;
+            }
+        }
+
+        document.getElementById('activity-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            currentActivityName = document.getElementById('activity-name').value.trim();
+            const generateBtn = document.getElementById('generate-btn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Membuat sheet...';
+            try {
+                await callAppsScript({ action: 'createSheet', sheetName: currentActivityName, token: googleIdToken });
+                const formUrl = new URL(window.location.href);
+                formUrl.search = '';
+                formUrl.searchParams.set('activity', currentActivityName);
+                document.getElementById('qrcode-title').textContent = currentActivityName;
+                const qrcodeContainer = document.getElementById('qrcode');
+                qrcodeContainer.innerHTML = '';
+                new QRCode(qrcodeContainer, { text: formUrl.href, width: 256, height: 256 });
+                showView('qrcode');
+            } catch (error) {
+                alert('Gagal membuat sesi:\n\n' + error.message);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Buat QR Code';
+            }
         });
-        main.innerHTML = `
-          <div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6">
-            <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-          </div>
-          <h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1>
-          <p class="text-slate-600 text-lg">Terima kasih, <strong>${result.data}</strong>. Kehadiran Anda telah dicatat.</p>`;
-      } catch (error) {
-        main.innerHTML = `<p class="text-red-500 text-lg">❌ Gagal: ${error.message}</p>`;
-      }
-    }
+        
+        document.getElementById('close-session-btn').addEventListener('click', async function() {
+            if (!confirm(`Apakah Anda yakin ingin menutup sesi presensi untuk "${currentActivityName}"? Aksi ini tidak dapat dibatalkan.`)) return;
+            this.disabled = true;
+            this.textContent = 'Menutup...';
+            try {
+                const result = await callAppsScript({ action: 'closeSheet', sheetName: currentActivityName, token: googleIdToken });
+                alert(result.message);
+                this.textContent = 'Sesi Telah Ditutup';
+            } catch (error) {
+                alert('Gagal menutup sesi:\n\n' + error.message);
+                this.disabled = false;
+                this.textContent = 'Tutup Sesi Presensi';
+            }
+        });
 
-    // ==== UI EVENTS ====
-    document.getElementById('activity-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const rawName = document.getElementById('activity-name').value;
-      currentActivityName = sanitizeName(rawName);
+        document.getElementById('reset-btn').addEventListener('click', () => { showView('setup'); });
 
-      const btn = document.getElementById('generate-btn');
-      btn.disabled = true; btn.textContent = 'Membuat sheet...';
-      try {
-        await callAppsScript({ action: 'createSheet', sheetName: currentActivityName, token: googleIdToken });
+        function getUserLocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    return resolve({ latitude: null, longitude: null, timestamp: Date.now() });
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, timestamp: position.timestamp }),
+                    () => resolve({ latitude: null, longitude: null, timestamp: Date.now() })
+                );
+            });
+        }
 
-        const urlForQr = buildActivityUrl(encodeURIComponent(currentActivityName));
-        document.getElementById('qrcode-title').textContent = currentActivityName;
+        async function handleParticipantSignIn(response) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activityName = urlParams.get('activity');
+            const participantToken = response.credential;
+            const mainContainer = document.getElementById('participant-view');
+            mainContainer.innerHTML = `<p class="text-lg text-slate-600">Mendapatkan lokasi Anda...</p>`;
+            try {
+                const location = await getUserLocation();
+                mainContainer.innerHTML = `<p class="text-lg text-slate-600">Memproses presensi...</p>`;
+                const result = await callAppsScript({ action: 'recordAttendance', sheetName: decodeURIComponent(activityName), token: participantToken, location: location });
+                mainContainer.innerHTML = `<div class="mx-auto bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-6"><svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><h1 class="text-2xl font-bold text-slate-800 mb-2">Presensi Berhasil!</h1><p class="text-slate-600 text-lg">Terima kasih, <strong>${result.data}</strong>. Kehadiran Anda telah dicatat.</p>`;
+            } catch (error) {
+                mainContainer.innerHTML = `<p class="text-red-500 text-lg">❌ Gagal: ${error.message}</p>`;
+            }
+        }
 
-        const qr = document.getElementById('qrcode');
-        qr.innerHTML = '';
-        new QRCode(qr, { text: urlForQr, width: 256, height: 256 });
+        window.onload = function() {
+            // [FIX] Memeriksa apakah CLIENT_ID sudah diisi
+            if (CLIENT_ID.startsWith('MASUKKAN') || CLIENT_ID.length < 10) {
+                document.getElementById('main-container').innerHTML = `
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                        <p class="font-bold">Konfigurasi Belum Selesai</p>
+                        <p>Anda belum mengganti placeholder <strong>CLIENT_ID</strong> di dalam file index.html. Silakan salin Client ID Anda dari Google Cloud Console dan tempelkan ke dalam kode.</p>
+                    </div>
+                `;
+                return; // Menghentikan eksekusi skrip lebih lanjut
+            }
 
-        showView('qrcode');
-      } catch (error) {
-        alert('Gagal membuat sesi:\n\n' + error.message);
-      } finally {
-        btn.disabled = false; btn.textContent = 'Buat QR Code';
-      }
-    });
+            // Inisialisasi Google Sign-In untuk Panitia
+            google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleCredentialResponse });
+            google.accounts.id.renderButton(document.querySelector('.g_id_signin'), { theme: 'outline', size: 'large' });
 
-    document.getElementById('close-session-btn').addEventListener('click', async function () {
-      if (!currentActivityName) return;
-      if (!confirm(`Tutup sesi presensi untuk "${currentActivityName}"? Aksi ini tidak dapat dibatalkan.`)) return;
-
-      this.disabled = true;
-      const prev = this.textContent;
-      this.textContent = 'Menutup...';
-      try {
-        const result = await callAppsScript({ action: 'closeSheet', sheetName: currentActivityName, token: googleIdToken });
-        alert(result.message);
-        this.textContent = 'Sesi Telah Ditutup';
-      } catch (error) {
-        alert('Gagal menutup sesi:\n\n' + error.message);
-        this.disabled = false;
-        this.textContent = prev;
-      }
-    });
-
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      document.getElementById('activity-name').value = '';
-      showView('setup');
-    });
-
-    // ==== ENTRY POINT ====
-    window.onload = function () {
-      if (!CLIENT_ID || CLIENT_ID.length < 10) {
-        document.getElementById('main-container').innerHTML = `
-          <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
-            <p class="font-bold">Konfigurasi Belum Selesai</p>
-            <p>CLIENT_ID belum diisi. Salin Client ID dari Google Cloud Console ke file ini.</p>
-          </div>`;
-        return;
-      }
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const activityName = urlParams.get('activity');
-
-      if (activityName) {
-        // Mode peserta (scan QR)
-        document.body.innerHTML = `
-          <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
-            <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1>
-            <p class="text-slate-500 mb-8">Login dengan Google untuk mencatat kehadiran Anda.</p>
-            <div id="participant-signin-button"></div>
-          </div>`;
-
-        google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleParticipantSignIn });
-        google.accounts.id.renderButton(document.getElementById('participant-signin-button'), { theme: 'outline', size: 'large' });
-      } else {
-        // Mode panitia (buat sesi)
-        initGsiForOrganizer();
-        showView('login'); // tampilkan login dulu, lalu ke setup setelah token diterima
-      }
-    };
-  </script>
+            const urlParams = new URLSearchParams(window.location.search);
+            const activityName = urlParams.get('activity');
+            if (activityName) {
+                document.body.innerHTML = `
+                    <div id="participant-view" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+                        <h1 class="text-2xl font-bold text-slate-800 mb-2 break-words">${decodeURIComponent(activityName)}</h1>
+                        <p class="text-slate-500 mb-8">Login dengan Google untuk mencatat kehadiran Anda.</p>
+                        <div id="participant-signin-button"></div>
+                    </div>
+                `;
+                
+                google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleParticipantSignIn });
+                google.accounts.id.renderButton(document.getElementById('participant-signin-button'), { theme: 'outline', size: 'large' });
+            }
+        };
+    </script>
 </body>
 </html>
