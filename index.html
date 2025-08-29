@@ -93,23 +93,25 @@
     }
 
     // Panggilan ke Apps Script
-    async function callAppsScript(payload) {
-      try {
-        return await fetchWithRetry(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          throw new Error('Timeout: Server tidak merespons. Coba lagi atau cek jaringan/URL deployment.');
-        }
-        if (error instanceof TypeError && /fetch/i.test(error.message)) {
-          throw new Error('Network Error: Gagal terhubung ke server. Periksa SCRIPT_URL atau koneksi internet.');
-        }
-        throw error;
-      }
+ async function callAppsScript(payload) {
+  try {
+    return await fetchWithRetry(SCRIPT_URL, {
+      method: 'POST',
+      // Penting: text/plain agar tidak memicu preflight
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Timeout: Server tidak merespons. Cek jaringan/URL deployment.');
     }
+    if (error instanceof TypeError && /fetch/i.test(error.message)) {
+      throw new Error('Network Error: Gagal terhubung ke server. Periksa SCRIPT_URL atau koneksi internet.');
+    }
+    throw error;
+  }
+}
+
 
     // ==== GOOGLE ID (GSI) ====
     let gsiInitialized = false;
