@@ -323,7 +323,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, getDoc, query, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Referensi DOM ---
@@ -358,8 +358,26 @@
         const provider = new GoogleAuthProvider();
 
         // --- Logika Login / Logout ---
-        loginBtn.addEventListener('click', () => {
-            signInWithPopup(auth, provider).catch(error => console.error("Login Gagal:", error));
+        loginBtn.addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Login Gagal:", error);
+                // Fallback jika popup diblokir
+                if (error && error.code === 'auth/popup-blocked') {
+                    try {
+                        await signInWithRedirect(auth, provider);
+                        return;
+                    } catch (err2) {
+                        console.error('Redirect login juga gagal:', err2);
+                        alert('Login gagal karena popup diblokir. Izinkan popup atau akses lewat domain yang diizinkan/HTTPS.');
+                    }
+                } else if (error && error.code === 'auth/unauthorized-domain') {
+                    alert('Domain ini belum diizinkan di Firebase Authentication. Tambahkan domain (mis. localhost) di Firebase console.');
+                } else {
+                    alert('Login Google gagal: ' + (error?.message || 'Tidak diketahui'));
+                }
+            }
         });
         logoutBtn.addEventListener('click', () => {
             signOut(auth).catch(error => console.error("Logout Gagal:", error));
@@ -511,7 +529,7 @@
 
         function listenForMyLogs(userId) {
             const logsCollectionRef = collection(db, `users/${userId}/logs`);
-            const q = query(logsCollectioneRef, orderBy("waktu", "desc"), limit(50));
+            const q = query(logsCollectionRef, orderBy("waktu", "desc"), limit(50));
             onSnapshot(q, (snapshot) => {
                 loadingIndicator.style.display = 'none';
                 const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
