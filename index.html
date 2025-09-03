@@ -203,24 +203,33 @@
             const historyCollectionRef = collection(db, `users/${userId}/logs`);
             const q = query(historyCollectionRef, orderBy('waktu', 'desc'));
             
-            unsubscribeFromHistory = onSnapshot(q, (snapshot) => {
-                if (snapshot.empty) {
-                    historyList.innerHTML = '<p class="text-slate-500 text-center py-4">Belum ada riwayat presensi.</p>';
-                    return;
+            unsubscribeFromHistory = onSnapshot(q, 
+                (snapshot) => { // Callback jika berhasil
+                    if (snapshot.empty) {
+                        historyList.innerHTML = '<p class="text-slate-500 text-center py-4">Belum ada riwayat presensi.</p>';
+                        return;
+                    }
+                    historyList.innerHTML = snapshot.docs.map(doc => {
+                        const log = doc.data();
+                        const time = log.waktu.toDate().toLocaleString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        });
+                        return `
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <p class="font-medium text-slate-800">${escapeHTML(log.namaSesi)}</p>
+                                <p class="text-xs text-slate-500">${time}</p>
+                            </div>
+                        `;
+                    }).join('');
+                },
+                (error) => { // Callback jika terjadi error
+                    console.error("Gagal memuat riwayat:", error);
+                    historyList.innerHTML = `<div class="text-red-600 bg-red-100 p-3 rounded-lg text-center">
+                        <p class="font-semibold">Gagal Memuat Riwayat</p>
+                        <p class="text-sm">Pastikan aturan keamanan Firebase sudah benar dan dipublikasikan.</p>
+                    </div>`;
                 }
-                historyList.innerHTML = snapshot.docs.map(doc => {
-                    const log = doc.data();
-                    const time = log.waktu.toDate().toLocaleString('id-ID', {
-                        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                    });
-                    return `
-                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <p class="font-medium text-slate-800">${escapeHTML(log.namaSesi)}</p>
-                            <p class="text-xs text-slate-500">${time}</p>
-                        </div>
-                    `;
-                }).join('');
-            });
+            );
         }
         
         function showStatus(type, title, message) {
@@ -244,4 +253,3 @@
     </script>
 </body>
 </html>
-
