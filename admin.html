@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Presensi QR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Library untuk membuat QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #qrcode-container { min-height: 256px; }
+        #attendance-table th, #attendance-table td { padding: 12px 16px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen py-8">
+
+    <div class="w-full max-w-4xl mx-auto p-4 md:p-8">
+        <!-- Tampilan Login -->
+        <div id="login-container" class="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <h1 class="text-4xl font-bold text-slate-900">Admin Presensi</h1>
+            <p class="mt-2 text-slate-500 mb-8">Login dengan akun Google Anda untuk mengelola sesi presensi.</p>
+            <button id="login-btn" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 inline-flex items-center">
+                <svg class="w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C42.021,35.596,44,30.138,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                Login dengan Google
+            </button>
+        </div>
+
+        <!-- Tampilan Aplikasi Utama (Setelah Login) -->
+        <div id="app-container" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+                <header class="mb-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="text-left">
+                            <h1 class="text-4xl font-bold text-slate-900">Dasbor Admin</h1>
+                            <p id="user-info" class="text-sm text-slate-500 mt-1"></p>
+                        </div>
+                        <button id="logout-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Logout</button>
+                    </div>
+                </header>
+
+                <!-- Form Buat Sesi -->
+                <div id="create-session-form" class="mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-slate-800">Buat Sesi Presensi Baru</h2>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="text" id="session-name" placeholder="Nama Kegiatan (e.g., Rapat Bulanan)" class="flex-grow w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button id="create-session-btn" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700">Buat Sesi & Tampilkan QR</button>
+                    </div>
+                </div>
+
+                <!-- Tampilan Sesi Aktif -->
+                <div id="active-session-container" class="hidden">
+                    <h2 id="active-session-title" class="text-3xl font-bold text-center mb-6 text-slate-900"></h2>
+                    
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <!-- Kolom QR Code -->
+                        <div class="w-full md:w-1/3 text-center">
+                             <div id="qrcode-container" class="bg-slate-50 border-2 border-slate-200 rounded-xl flex items-center justify-center p-4 mx-auto w-64 h-64 mb-4">
+                                <canvas id="qrcode-canvas"></canvas>
+                             </div>
+                             <p class="text-sm text-slate-500">Arahkan peserta untuk memindai kode ini.</p>
+                             <div id="session-status" class="mt-2 text-lg font-semibold"></div>
+                        </div>
+
+                        <!-- Kolom Daftar Kehadiran -->
+                        <div class="w-full md:w-2/3">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-2xl font-semibold text-slate-800">Daftar Kehadiran (<span id="attendee-count">0</span>)</h3>
+                                <div class="flex gap-2">
+                                     <button id="close-session-btn" class="bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-amber-600">Tutup Presensi</button>
+                                     <button id="export-csv-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700">Ekspor CSV</button>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 rounded-xl border border-slate-200 h-96 overflow-y-auto">
+                                <table id="attendance-table" class="w-full text-left">
+                                    <thead class="sticky top-0 bg-slate-100">
+                                        <tr>
+                                            <th class="font-semibold text-slate-600">Nama</th>
+                                            <th class="font-semibold text-slate-600">Waktu</th>
+                                            <th class="font-semibold text-slate-600">Lokasi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attendance-list">
+                                        <!-- Data akan diisi oleh JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button id="new-session-btn" class="mt-6 w-full bg-slate-200 text-slate-800 font-semibold py-3 px-6 rounded-lg hover:bg-slate-300">Buat Sesi Baru</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Referensi DOM ---
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfoDisplay = document.getElementById('user-info');
+        const sessionNameInput = document.getElementById('session-name');
+        const createSessionBtn = document.getElementById('create-session-btn');
+        const createSessionForm = document.getElementById('create-session-form');
+        const activeSessionContainer = document.getElementById('active-session-container');
+        const activeSessionTitle = document.getElementById('active-session-title');
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        const qrcodeCanvas = document.getElementById('qrcode-canvas');
+        const attendanceList = document.getElementById('attendance-list');
+        const attendeeCount = document.getElementById('attendee-count');
+        const newSessionBtn = document.getElementById('new-session-btn');
+        const sessionStatus = document.getElementById('session-status');
+        const closeSessionBtn = document.getElementById('close-session-btn');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+
+        let currentSessionId = null;
+        let unsubscribeFromAttendees = null;
+        let attendeesData = []; // Store attendees for CSV export
+
+        // --- Konfigurasi Firebase ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb7mCPgC-GAVfd8bjI7hpypF_iYPA4Ob8",
+            authDomain: "prensensi-qr.firebaseapp.com",
+            projectId: "prensensi-qr",
+            storageBucket: "prensensi-qr.appspot.com",
+            messagingSenderId: "372766345596",
+            appId: "1:372766345596:web:331ddc11a7b461273d3cf9"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        // --- Logika Login / Logout ---
+        loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(error => console.error("Login Gagal:", error)));
+        logoutBtn.addEventListener('click', () => signOut(auth).catch(error => console.error("Logout Gagal:", error)));
+
+        // --- Otentikasi ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                loginContainer.style.display = 'none';
+                appContainer.style.display = 'block';
+                userInfoDisplay.textContent = `Login sebagai: ${user.email}`;
+                 // Debugging: Cetak objek pengguna ke konsol
+                console.log("Objek Pengguna:", user);
+            } else {
+                loginContainer.style.display = 'block';
+                appContainer.style.display = 'none';
+                if (unsubscribeFromAttendees) unsubscribeFromAttendees();
+            }
+        });
+
+        // --- Logika Aplikasi ---
+        createSessionBtn.addEventListener('click', async () => {
+            const sessionName = sessionNameInput.value.trim();
+            if (!sessionName) {
+                alert("Nama kegiatan tidak boleh kosong.");
+                return;
+            }
+
+            try {
+                const sessionDocRef = await addDoc(collection(db, "kegiatan"), {
+                    nama: sessionName,
+                    dibuatPada: new Date(),
+                    status: 'buka' // Status awal
+                });
+                currentSessionId = sessionDocRef.id;
+                showActiveSession(sessionName);
+                generateQRCode(currentSessionId);
+                listenForAttendees(currentSessionId);
+            } catch (error) {
+                console.error("Gagal membuat sesi:", error);
+                alert("Gagal membuat sesi baru. Cek console untuk detail.");
+            }
+        });
+
+        closeSessionBtn.addEventListener('click', async () => {
+            if (!currentSessionId) {
+                return;
+            }
+            // Dialog konfirmasi dihapus karena bisa diblokir di beberapa lingkungan.
+            try {
+                const sessionDocRef = doc(db, "kegiatan", currentSessionId);
+                await updateDoc(sessionDocRef, { status: 'tutup' });
+                sessionStatus.textContent = 'Sesi Ditutup';
+                sessionStatus.className = 'mt-2 text-lg font-semibold text-red-600';
+                closeSessionBtn.disabled = true;
+                closeSessionBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                qrcodeContainer.innerHTML = '<p class="text-slate-500">Sesi telah ditutup.</p>';
+            } catch (error) {
+                console.error("Gagal menutup sesi:", error);
+                alert("Gagal menutup sesi. Cek console untuk detail.");
+            }
+        });
+        
+        exportCsvBtn.addEventListener('click', () => {
+            if (attendeesData.length === 0) {
+                alert("Belum ada peserta yang hadir.");
+                return;
+            }
+            const headers = "Nama,Email,Waktu,Latitude,Longitude";
+            const rows = attendeesData.map(p => {
+                const time = p.waktu.toDate().toLocaleString('id-ID');
+                const lat = p.lokasi ? p.lokasi.lat : 'N/A';
+                const lng = p.lokasi ? p.lokasi.lng : 'N/A';
+                return `"${p.nama}","${p.email}","${time}",${lat},${lng}`;
+            });
+            const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows.join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const sessionName = activeSessionTitle.textContent.trim().replace(/ /g, '_');
+            link.setAttribute("download", `presensi_${sessionName}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        newSessionBtn.addEventListener('click', () => {
+            if (unsubscribeFromAttendees) unsubscribeFromAttendees();
+            currentSessionId = null;
+            attendeesData = [];
+            sessionNameInput.value = '';
+            createSessionForm.style.display = 'block';
+            activeSessionContainer.style.display = 'none';
+        });
+
+        function showActiveSession(sessionName) {
+            createSessionForm.style.display = 'none';
+            activeSessionContainer.style.display = 'block';
+            activeSessionTitle.textContent = sessionName;
+            sessionStatus.textContent = 'Sesi Terbuka';
+            sessionStatus.className = 'mt-2 text-lg font-semibold text-green-600';
+            closeSessionBtn.disabled = false;
+            closeSessionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function generateQRCode(sessionId) {
+            // PERBAIKAN: Mendapatkan URL dasar tanpa nama file untuk memastikan link selalu benar.
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const url = `${baseUrl}index.html?sessionId=${sessionId}`;
+            
+            QRCode.toCanvas(qrcodeCanvas, url, { width: 256 }, (error) => {
+                if (error) console.error(error);
+            });
+            qrcodeContainer.innerHTML = '';
+            qrcodeContainer.appendChild(qrcodeCanvas);
+        }
+
+        function listenForAttendees(sessionId) {
+            const attendeesCollectionRef = collection(db, `presensi/${sessionId}/peserta`);
+            const q = query(attendeesCollectionRef);
+            
+            if (unsubscribeFromAttendees) unsubscribeFromAttendees();
+
+            unsubscribeFromAttendees = onSnapshot(q, (snapshot) => {
+                attendeesData = snapshot.docs.map(doc => doc.data());
+                renderAttendees(attendeesData);
+            });
+        }
+
+        function renderAttendees(attendees) {
+            attendeeCount.textContent = attendees.length;
+            if (attendees.length === 0) {
+                 attendanceList.innerHTML = '<tr><td colspan="3" class="text-center text-slate-500 py-8">Belum ada peserta yang hadir.</td></tr>';
+                 return;
+            }
+            attendees.sort((a, b) => b.waktu.toDate() - a.waktu.toDate());
+            attendanceList.innerHTML = attendees.map(p => {
+                const time = p.waktu.toDate().toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const location = p.lokasi ? `<a href="https://www.google.com/maps?q=${p.lokasi.lat},${p.lokasi.lng}" target="_blank" class="text-indigo-600 hover:underline">Lihat Peta</a>` : 'Tidak ada';
+                return `
+                    <tr class="border-b border-slate-200">
+                        <td class="text-slate-800">
+                            <div class="font-medium">${escapeHTML(p.nama)}</div>
+                            <div class="text-xs text-slate-500">${escapeHTML(p.email)}</div>
+                        </td>
+                        <td class="text-slate-600">${time}</td>
+                        <td class="text-slate-600">${location}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.textContent = str || "";
+            return p.innerHTML;
+        }
+    </script>
+</body>
+</html>
+
