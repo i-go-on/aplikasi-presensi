@@ -6,68 +6,322 @@
     <title>Admin Presensi QR</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Library untuk membuat QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
+        #qrcode-container { min-height: 256px; }
+        #attendance-table th, #attendance-table td { padding: 12px 16px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen py-8">
 
-    <div id="root">
-        <!-- Loader awal -->
-        <div class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl p-8 text-center">
-            <h1 class="text-2xl font-bold text-slate-900">Memuat Dasbor Admin...</h1>
-            <p class="mt-2 text-slate-500">Silakan masukkan kata sandi untuk melanjutkan.</p>
+    <div id="main-container" class="w-full max-w-4xl mx-auto p-4 md:p-8 hidden">
+        <!-- Tampilan Login -->
+        <div id="login-container" class="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <h1 class="text-4xl font-bold text-slate-900">Admin Presensi</h1>
+            <p class="mt-2 text-slate-500 mb-8">Login dengan akun Google Anda untuk mengelola sesi presensi.</p>
+            <button id="login-btn" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 inline-flex items-center">
+                <svg class="w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C42.021,35.596,44,30.138,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                Login dengan Google
+            </button>
+        </div>
+
+        <!-- Tampilan Aplikasi Utama (Setelah Login) -->
+        <div id="app-container" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+                <header class="mb-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="text-left">
+                            <h1 class="text-4xl font-bold text-slate-900">Dasbor Admin</h1>
+                            <p id="user-info" class="text-sm text-slate-500 mt-1"></p>
+                        </div>
+                        <button id="logout-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Logout</button>
+                    </div>
+                </header>
+
+                <!-- Form Buat Sesi -->
+                <div id="create-session-form" class="mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-slate-800">Buat Sesi Presensi Baru</h2>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="text" id="session-name" placeholder="Nama Kegiatan (e.g., Rapat Bulanan)" class="flex-grow w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button id="create-session-btn" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700">Buat Sesi & Tampilkan QR</button>
+                    </div>
+                </div>
+
+                <!-- Tampilan Sesi Aktif -->
+                <div id="active-session-container" class="hidden">
+                    <h2 id="active-session-title" class="text-3xl font-bold text-center mb-6 text-slate-900"></h2>
+                    
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <!-- Kolom QR Code -->
+                        <div class="w-full md:w-1/3 text-center">
+                             <div id="qrcode-container" class="bg-slate-50 border-2 border-slate-200 rounded-xl flex items-center justify-center p-4 mx-auto w-64 h-64 mb-4">
+                                <canvas id="qrcode-canvas"></canvas>
+                             </div>
+                             <p class="text-sm text-slate-500">Arahkan peserta untuk memindai kode ini.</p>
+                             <div id="session-status" class="mt-2 text-lg font-semibold"></div>
+                        </div>
+
+                        <!-- Kolom Daftar Kehadiran -->
+                        <div class="w-full md:w-2/3">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-2xl font-semibold text-slate-800">Daftar Kehadiran (<span id="attendee-count">0</span>)</h3>
+                                <div class="flex gap-2">
+                                     <button id="close-session-btn" class="bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-amber-600">Tutup Presensi</button>
+                                     <button id="export-csv-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700">Ekspor CSV</button>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 rounded-xl border border-slate-200 h-96 overflow-y-auto">
+                                <table id="attendance-table" class="w-full text-left">
+                                    <thead class="sticky top-0 bg-slate-100">
+                                        <tr>
+                                            <th class="font-semibold text-slate-600">Nama</th>
+                                            <th class="font-semibold text-slate-600">Email</th>
+                                            <th class="font-semibold text-slate-600">Lokasi</th>
+                                            <th class="font-semibold text-slate-600">Waktu</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attendance-list">
+                                        <!-- Data akan diisi oleh JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button id="new-session-btn" class="mt-6 w-full bg-slate-200 text-slate-800 font-semibold py-3 px-6 rounded-lg hover:bg-slate-300">Buat Sesi Baru</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         (function() {
-            // Payload aplikasi yang di-enkode ke Base64
-            const encodedPayload = "PGRpdiBpZD0ibWFpbi1jb250YWluZXIiIGNsYXNzPSJ3LWZ1bGwgbWF4LXctNHhsIG14LWF1dG8gcC00IG1kOnAtOCI+CiAgICAgICAgPCEtLSBUYW1waWxhbiBMb2dpbiAtLT4KICAgICAgICA8ZGl2IGlkPSJsb2dpbi1jb250YWluZXIiIGNsYXNzPSJiZy13aGl0ZSByb3VuZGVkLTJ4bCBzaGFkb3cteGwgYy04IHRleHQtY2VudGVyIj4KICAgICAgICAgICAgPGgxIGNsYXNzPSJ0ZXh0LTR4bCBmb250LWJvbGQgdGV4dC1zbGF0ZS05MDAiPkFkbWluIFByZXNlbnNpPC9oMT4KICAgICAgICAgICAgPHAgY2xhc3M9Im10LTIgdGV4dC1zbGF0ZS01MDAgbWItOCI+TG9naW4gZGVuZ2FuIGFrdW4gR29vZ2xlIEFuZGEgdW50dWsgbWVuZ2Vsb2xhIHNlc2kgcHJlc2Vuc2kuPC9wPgogICAgICAgICAgICA8YnV0dG9uIGlkPSJsb2dpbi1idG4iIGNsYXNzPSJiZy1pbmRpZ28tNjAwIHRleHQtd2hpdGUgZm9udC1zZW1pYm9sZCBweS0zIHB4LTYgcm91bmRlZC1sZyBob3ZlcjpiZy1pbmRpZ28tNzAwIGZvY3VzOm91dGxpbmUtbm9uZSBmb2N1czpyaW5nLTIgZm9jdXM6cmluZy1vZmZzZXQtMiBmb2N1czpyaW5nLWluZGlnby01MDAgaW5saW5lLWZsZXggaXRlbXMtY2VudGVyIj4KICAgICAgICAgICAgICAgIDxzdmcgY2xhc3M9InctNSBoLTUgbXItMyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxwYXRoIGZpbGw9IiNGRkMxMDciIGQ9Ik00My42MTEsMjAuMDgzSDQyVjIwSDI0djhoMTEuMzAzYy0xLjY0OSw0LjY1Ny02LjA4LDgtMTEuMzAzLDhjLTYuNjI3LDAtMTItNS4zNzMtMTItMTJjMC02LjYyNyw1LjM3My0xMiwxMi0xMmMzLjA1OSwwLDUuODQyLDEuMTU0LDcuOTYxLDMuMDM5bDUuNjU3LTUuNjU3QzM0LjA0Niw2LjA1MywyOS4yNjgsNCwyNCw0QzEyLjk1NSw0LDQsMTIuOTU1LDQsMjRjMCwxMS4wNDUsOC45NTUsMjAsMjAsMjBjMTEuMDQ1LDAsMjAtOC45NTUsMjAtMjBDNDQsMjIuNjU5LDQzLjg2MiwyMS4zNSw0My42MTEsMjAuMDgzeg0iPjwvcGF0aD48cGF0aCBmaWxsPSIjRkYzRDAwIiBkPSJNNi4zMDYsMTQuNjkxbDYuNTcxLDQuODE5QzE0LjY1NSwxNS4xMDgsMTguOTYxLDEyLDI0LDEyYzMuMDU5LDAsNS44NDIsMS4xNTQsNy45NjEsMy4wMzlsNS42NTctNS42NTdDMzQuMDQ2LDYuMDUzLDI5LjI2OCw0LDI0LDRDMTYuMzE4LDQsOS42NTYsOC4zMzcsNi4zMDYsMTQuNjkxeiI+PC9wYXRoPjxwYXRoIGZpbGw9IiM0Q0FGNTAiIGQ9Ik0yNCw0NGM1LjE2NiwwLDkuODYtMS45NzcsMTMuNDA5LTUuMTkybC02LjE5LTUuMjM4QzI5LjIxMSwzNS4wOTEsMjYuNzE1LDM2LDI0LDM2Yy01LjIwMiwwLTkuNjE5LTMuMzE3LTExLjI4My03Ljk0NmwtNi41MjIsNS4wMjVDOS41MDUsMzkuNTU2LDE2LjIyNyw0NCwyNCw0NHoiPjwvcGF0aD48cGF0aCBmaWxsPSIjMTk3NkQyIiBkPSJNNDMuNjExLDIwLjA4M0g0MlYyMEgyNHY4aDExLjMwM2MtMC43OTIsMi4yMzctMi4yMzEsNC4xNjYtNC4wODcsNS41NzFsNi4xOSw1LjIzOEM0Mi4wMjEsMzUuNTk2LDQ0LDMwLjEzOCw0NCwyNEM0NCwyMi42NTksNDMuODYyLDIxLjM1LDQzLjYxMSwyMC4wODN6Ij48L3BhdGg+PC9zdmc+CiAgICAgICAgICAgICAgICBMb2dpbiBkZW5nYW4gR29vZ2xlCiAgICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgIDwvZGl2PgoKICAgICAgICA8IS0tIFRhbXBpbGFuIEFwbGlrYXNpIFV0YW1hIChTZXRlbGFoIExvZ2luKSAtLT4KICAgICAgICA8ZGl2IGlkPSJhcHAtY29udGFpbmVyIiBjbGFzcz0iaGlkZGVuIj4KICAgICAgICAgICAgPGRpdiBjbGFzcz0iYmctd2hpdGUgcm91bmRlZC0yeGwgY2xhc3M9ImJvcmRlciBib3JkZXItc2xhdGUtMjAwIiBwLTYgbWQ6cC04Ij4KICAgICAgICAgICAgICAgIDxoZWFkZXIgY2xhc3M9Im1iLTgiPgogICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImZsZXgganVzdGlmeS1iZXR3ZWVuIGl0ZW1zLXN0YXJ0IG1iLTYiPgogICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJ0ZXh0LWxlZnQiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPGgxIGNsYXNzPSJ0ZXh0LTR4bCBmb250LWJvbGQgdGV4dC1zbGF0ZS05MDAiPkRhc2JvciBBZG1pbjwvaDE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cCBpZD0idXNlci1pbmZvIiBjbGFzcz0idGV4dC1zbSB0ZXh0LXNsYXRlLTUwMCBtdC0xIj48L3A+CiAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgICAgICAgICA8YnV0dG9uIGlkPSJsb2dvdXQtYnRuIiBjbGFzcz0idGV4dC1zbSB0ZXh0LWluZGlnby02MDAgaG92ZXI6dGV4dC1pbmRpZ28tODAwIGZvbnQtc2VtaWJvbGQiPkxvZ291dDwvYnV0dG9uPgogICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgPC9oZWFkZXI+CgogICAgICAgICAgICAgICAgPCEtLSBGb3JtIEJ1YXQgU2VzaSAtLT4KICAgICAgICAgICAgICAgIDxkaXYgaWQ9ImNyZWF0ZS1zZXNzaW9uLWZvcm0iIGNsYXNzPSJtYi04Ij4KICAgICAgICAgICAgICAgICAgICA8aDIgY2xhc3M9InRleHQtMnhsIGZvbnQtc2VtaWJvbGQgbWItNCB0ZXh0LXNsYXRlLTgwMCI+QnVhdCBTZXNpIFByZXNlbnNpIEJhcnU8L2gyPgogICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImZsZXggZmxleC1jb2wgc206ZmxleC1yb3cgZ2FwLTQiPgogICAgICAgICAgICAgICAgICAgICAgICA8aW5wdXQgdHlwZT0idGV4dCIgaWQ9InNlc3Npb24tbmFtZSIgcGxhY2Vob2xkZXI9Ik5hbWEgS2VnaWF0YW4gKGUuZy4sIFJhcGF0IEJ1bGFuYW4pIiBjbGFzcz0iZmxleC1ncm93IHctZnVsbCBweC00IHB5LTMgYm9yZGVyIGJvcmRlci1zbGF0ZS0zMDAgcm91bmRlZC1sZyBmb2N1czpvdXRsaW5lLW5vbmUgZm9jdXM6cmluZy0yIGZvY3VzOnJpbmctaW5kaWdvLTUwMCI+CiAgICAgICAgICAgICAgICAgICAgICAgIDxidXR0b24gaWQ9ImNyZWF0ZS1zZXNzaW9uLWJ0biIgY2xhc3M9InctZnVsbCBzbTp3LWF1dG8gYmctaW5kaWdvLTYwMCB0ZXh0LXdoaXRlIGZvbnQtc2VtaWJvbGQgcHktMyBweC02IHJvdW5kZWQtbGcgY2xhc3M9ImhvdmVyOmJnLWluZGlnby03MDAiPkJ1YXQgU2VzaSAmIFRhbXBpbGthbiBRUjwvYnV0dG9uPgogICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgPC9kaXY+CgogICAgICAgICAgICAgICAgPCEtLSBUYW1waWxhbiBTZXNpIEFrdGlmIC0tPgogICAgICAgICAgICAgICAgPGRpdiBpZD0iYWN0aXZlLXNlc3Npb24tY29udGFpbmVyIiBjbGFzcz0iaGlkZGVuIj4KICAgICAgICAgICAgICAgICAgICA8aDIgaWQ9ImFjdGl2ZS1zZXNzaW9uLXRpdGxlIiBjbGFzcz0idGV4dC0zeGwgZm9udC1ib2xkIHRleHQtY2VudGVyIG1iLTYgdGV4dC1zbGF0ZS05MDAiPjwvaDI+CiAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iZmxleCBmbGV4LWNvbCBtZDpmbGV4LXJvdyBnYXAtOCI+CiAgICAgICAgICAgICAgICAgICAgICAgIDwhLS0gS29sb20gUVQgQ29kZSAtLT4KICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0idy1mdWxsIG1kOnctMS8zIHRleHQtY2VudGVyIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgaWQ9InFyY29kZS1jb250YWluZXIiIGNsYXNzPSJiZy1zbGF0ZS01MCBib3JkZXItMiBib3JkZXItc2xhdGUtMjAwIHJvdW5kZWQteGwgZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgcC00IG14LWF1dG8gdy02NCBoLTY0IG1iLTQiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxjYW52YXMgaWQ9InFyY29kZS1jYW52YXMiPjwvY2FudmFzPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cCBjbGFzcz0idGV4dC1zbSB0ZXh0LXNsYXRlLTUwMCI+QXJhaGthbiBwZXNlcnRhIHVudHVrIG1lbWluZGFpIGtvZGUgaW5pLjwvcD4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgaWQ9InNlc3Npb24tc3RhdHVzIiBjbGFzcz0ibXQtMiB0ZXh0LWxnIGZvbnQtc2VtaWJvbGQiPjwvZGl2PgogICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4KCiAgICAgICAgICAgICAgICAgICAgICAgIDwhLS0gS29sb20gRGFmdGFyIEtlaGFkaXJhbiAtLT4KICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0idy1mdWxsIG1kOnctMi8zIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImZsZXgganVzdGlmeS1iZXR3ZWVuIGl0ZW1zLWNlbnRlciBtYi00Ij4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8aDMgY2xhc3M9InRleHQtMnhsIGZvbnQtc2VtaWJvbGQgdGV4dC1zbGF0ZS04MDAiPkRhZnRhciBLZWhhZGlyYW4gKDxzcGFuIGlkPSJhdHRlbmRlZS1jb3VudCI+MDwvc3Bhbj4pPC9oMz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJmbGV4IGdhcC0yIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiBpZD0iY2xvc2Utc2Vzc2lvbi1idG4iIGNsYXNzPSJiZy1hbWJlci01MDAgdGV4dC13aGl0ZSBmb250LXNlbWlib2xkIHB5LTIgcHgtNCByb3VuZGVkLWxnIGhvdW5kZWQtbGctaG92ZXI6YmctYW1iZXItNjAwIj5UdXR1cCBDb25uZWN0aW9uPC9idXR0b24+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxidXR0b24gaWQ9ImV4cG9ydC1jc3YtYnRuIiBjbGFzcz0iYmctZ3JlZW4tNjAwIHRleHQtd2hpdGUgZm9udC1zZW1pYm9sZCBweS0yIHB4LTQgcm91bmRlZC1sZyBob3ZlcjpiZy1ncmVlbi03MDAiPkVrc3BvciBDU1Y8L2J1dHRvbj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iYmctc2xhdGUtNTAgcm91bmRlZC14bCBib3JkZXIgYm9yZGVyLXNsYXRlMjAwIGgtOTYgb3ZlcmZsb3cteS1hdXRvIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGFibGUgaWQ9ImF0dGVuZGFuY2UtdGFibGUiIGNsYXNzPSJ3LWZ1bGwgdGV4dC1sZWZ0Ij4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRoZWFkIGNsYXNzPSJzdGlja3kgdG9wLTAgYmctc2xhdGUtMTAwIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0cj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGggY2xhc3M9ImZvbnQtc2VtaWJvbGQgdGV4dC1zbGF0ZS02MDAiPk5hbWE8L3RoPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0aCBjbGFzcz0iZm9udC1zZW1pYm9sZCB0ZXh0LXNsYXRlNiAwMCI+RW1haWw8L3RoPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0aCBjbGFzcz0iZm9udC1zZW1pYm9sZCB0ZXh0LXNsYXRlNjAwIj5Mb2thc2k8L3RoPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0aCBjbGFzcz0iZm9udC1zZW1pYm9sZCB0ZXh0LXNsYXRlNjAwIj5XYWt0dTwvdGg+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdHI+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RoZWFkPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRib2R5IGlkPSJhdHRlbmRhbmNlLWxpc3QiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tIERhdGEgYWthbiBkaWlzaSBvbGVoIEphdmFTY3JpcHQgLS0+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3Rib2R5PgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGFibGU+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxidXR0b24gaWQ9Im5ldy1zZXNzaW9uLWJ0biIgY2xhc3M9Im10LTYgdy1mdWxsIGJnLXNsYXRlLTIwMCB0ZXh0LXNsYXRlLTgwMCBmb250LXNlbWlib2xkIHB5LTMgcHgtNiByb3VuZGVkLWxnIGhvdnI6Ymctc2xhdGUtMzAwIj5CdWF0IFNlc2kgQmFydTwvYnV0dG9uPgogICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgIDwvZGl2Pgo8c2NyaXB0IHR5cGU9Im1vZHVsZSI+CiAgICAgICAgYWx5IHN0ciA9IGA8cCBiYW5uZWQ9IlxuICAgICAgICBpbXBvcnQgeyBpbml0aWFsaXplQXBwIH0gZnJvbSAiaHR0cHM6Ly93d3cuZ3N0YXRpYy5jb20vZmlyZWJhc2Vqcy8xMS42LjEvZmlyZWJhc2UtYXBwLmpzIjtcbiAgICAgICAgYWx5IHN0ciA9IGA8cCBiYW5uZWQ9IlxuICAgICAgICBpbXBvcnQgeyBpbml0aWFsaXplQXBwQ2hlY2ssIFJlQ2FwdGNoYUVudGVycHJpc2VQcm92aWRlciB9IGZyb20gImh0dHBzOi8vd3d3LmdzdGF0aWMuY29tL2ZpcmViYXNlanMvMTEuNi4xL2ZpcmViYXNlLWFwcC1jaGVjay5qcyI7XG4gICAgICAgIGFseSBzdHIgPSBgPHAgaWQ9IlxuICAgICAgICBpbXBvcnQgeyBnZXRBdXRoLCBvbkF1dGhTdGF0ZUNoYW5nZWQsIEdvb2dsZUF1dGhQcm92aWRlciwgc2lnbkluV2l0aFBvcHVwLCBzaWduT3V0IH0gZnJvbSAiaHR0cHM6Ly93d3cuZ3N0YXRpYy5jb20vZmlyZWJhc2Vqcy8xMS42LjEvZmlyZWJhc2UtYXV0aC5qcyI7XG4gICAgICAgIGFseSBzdHIgPSBgPHAgaWQ9IlxuICAgICAgICBpbXBvcnQgeyBnZXRGaXJlc3RvcmUsIGNvbGxlY3Rpb24sIGFkZERvYywgb25TbmFwc2hvdCwgcXVlcnksIGRvYywgdXBkYXRlRG9jIH0gZnJvbSAiaHR0cHM6Ly93d3cuZ3N0YXRpYy5jb20vZmlyZWJhc2Vqcy8xMS42LjEvZmlyZWJhc2UtZmlyZXN0b3JlLmpzIjtcblxuICAgICAgICAvLyAtLS0gS29uZmlndXJhc2kgRmlyZWJhc2UgLS0tXG4gICAgICAgIGNvbnN0IGZpcmViYXNlQ29uZmlnID0ge1xuICAgICAgICAgICAgYWxpYXNlZDogXCJPendXbUx6bFhETVJyQldVVkd0dGRVUndWV0pzWkdWbGRtVmpZVFpsUFRwa1p6UTJPR3R3TVE9PVwiLFxuICAgICAgICAgICAgYXV0aERvbWFpbjogXCJwcmVuc2Vuc2ktcXIuZmlyZWJhc2VhcHAuY29tXCIsXG4gICAgICAgICAgICBwcm9qZWN0SWQ6IFwicHJlbnNlbnNpLXFyXCIsXG4gICAgICAgICAgICBzdG9yYWdlQnVja2V0OiBcInByZW5zZW5zaS1xci5hcHBzcG90LmNvbVwiLFxuICAgICAgICAgICAgbWVzc2FnaW5nU2VuZGVySWQ6IFwiMzcyNzY2MzQ1NTk2XCIsXG4gICAgICAgICAgICBhcHBJZDogXCIxOjM3Mjc2NjM0NTU5Njp3ZWI6MzMxZGRjMTFhN2I0NjEyNzNkM2NmOVwiXG4gICAgICAgIH07XG4gICAgICAgIGNvbnN0IGFwcCA9IGluaXRpYWxpemVBcHAoZmlyZWJhc2VDb25maWcpO1xuICAgICAgICBcbiAgICAgICAgLy8gLS0tIEluaXNpYWxpc2FzaSBBcHAgQ2hlY2sgLS0tXG4gICAgICAgIHRyeSB7XG4gICAgICAgICAgICBjb25zdCBhcHBDaGVjayA9IGluaXRpYWxpemVBcHBDaGVjayhhcHAsIHtcbiAgICAgICAgICAgICAgICBwcm92aWRlcjogbmV3IFJlQ2FwdGNoYUVudGVycHJpc2VQcm92aWRlcignR0FOVElfREVOR0FOIlwiU0lURV9LRVlfQU5EQVwiJyksXG4gICAgICAgICAgICAgICAgaXNUb2tlbkF1dG9SZWZyZXNoRW5hYmxlZDogdHJ1ZVxuICAgICAgICAgICAgfSk7XG4gICAgICAgIH0gY2F0Y2goZSkge1xuICAgICAgICAgICAgY29uc29sZS5lcnJvcihcIkd5Z2FsIGluaXNpYWxpc2FzaSBBcHAgQ2hlY2tcIiwgZSk7XG4gICAgICAgIH1cblxuICAgICAgICBjb25zdCBkYiA9IGdldEZpcmVzdG9yZShhcHApO1xuICAgICAgICBjb25zdCBhdXRoID0gZ2V0QXV0aChhcHApO1xuICAgICAgICBjb25zdCBwcm92aWRlciA9IG5ldyBHb29nbGVBdXRoUHJvdmlkZXIoKTtcbiAgICAgICAgXG4gICAgICAgIC8vIC0tLSBSZWZlcmVuc2kgRE9NIChoYXJ1cyBzdWJzY3JpYmUgU2Vzc2lvbnMgc2V0ZWxhaCBpbmlzaWFsaXphc2kpIC0tLVxuICAgICAgICBjb25zdCBsb2dpbkNvbnRhaW5lciA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdsb2dpbi1jb250YWluZXInKTtcbiAgICAgICAgY29uc3QgYXBwQ29udGFpbmVyID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2FwcC1jb250YWluZXInKTtcbiAgICAgICAgY29uc3QgbG9naW5CdG4gPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnbG9naW4tYnRuJyk7XG4gICAgICAgIGNvbnN0IGxvZ291dEJ0biA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdsb2dvdXQtYnRuJyk7XG4gICAgICAgIGNvbnN0IHVzZXJJbmZvRGlzcGxheSA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCd1c2VyLWluZm8nKTtcbiAgICAgICAgY29uc3Qgc2Vzc2lvbk5hbWVJbnB1dCA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzZXNzaW9uLW5hbWUnKTtcbiAgICAgICAgY29uc3QgY3JlYXRlU2Vzc2lvbkJ0biA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdjcmVhdGUtc2Vzc2lvbi1idG4nKTtcbiAgICAgICAgY29uc3QgY3JlYXRlU2Vzc2lvbkZvcm0gPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnY3JlYXRlLXNlc3Npb24tZm9ybScpO1xuICAgICAgICBjb25zdCBhY3RpdmVTZXNzaW9uQ29udGFpbmVyID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2FjdGl2ZS1zZXNzaW9uLWNvbnRhaW5lcicpO1xuICAgICAgICBjb25zdCBhY3RpdmVTZXNzaW9uVGl0bGUgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnYWN0aXZlLXNlc3Npb24tdGl0bGUnKTtcbiAgICAgICAgY29uc3QgcXJjb2RlQ29udGFpbmVyID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3FyY29kZS1jb250YWluZXInKTtcbiAgICAgICAgY29uc3QgcXJjb2RlQ2FudmFzID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3FyY29kZS1jYW52YXMnKTtcbiAgICAgICAgY29uc3QgYXR0ZW5kYW5jZUxpc3QgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnYXR0ZW5kYW5jZS1saXN0Jyk7XG4gICAgICAgIGNvbnN0IGF0dGVuZGVlQ291bnQgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnYXR0ZW5kZWUtY291bnQnKTtcbiAgICAgICAgY29uc3QgbmV3U2Vzc2lvbkJ0biA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCduZXctc2Vzc2lvbi1idG4nKTtcbiAgICAgICAgY29uc3Qgc2Vzc2lvblN0YXR1cyA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzZXNzaW9uLXN0YXR1cycpO1xuICAgICAgICBjb25zdCBjbG9zZVNlc3Npb25CdG4gPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnY2xvc2Utc2Vzc2lvbi1idG4nKTtcbiAgICAgICAgY29uc3QgZXhwb3J0Q3N2QnRuID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2V4cG9ydC1jc3YtYnRuJyk7XG5cbiAgICAgICAgbGV0IGN1cnJlbnRTZXNzaW9uSWQgPSBudWxsO1xuICAgICAgICBsZXQgdW5zdWJzY3JpYmVGcm9tQXR0ZW5kZWVzID0gbnVsbDtcbiAgICAgICAgbGV0IGF0dGVuZGVlc0RhdGEgPSBbXTtcblxuICAgICAgICAvLyAtLS0gTG9naWthIExvZ2luIC8gTG9nb3V0IC0tLVxuICAgICAgICBsb2dpbkJ0bi5hZGRFdmVudExpc3RlbmVyKCdjbGljaycsICgpID0+IHNpZ25JbldpdGhQb3B1cChhdXRoLCBwcm92aWRlcikuY2F0Y2goZXJyb3IgPT4gY29uc29sZS5lcnJvcihcIkd5Z2FsIExvZ2luXCIsIGVycm9yKSkpO1xuICAgICAgICBsb2dvdXRCdG4uYWRkRXZlbnRMaXN0ZW5lcignY2xpY2snLCAoKSA9PiB7XG4gICAgICAgICAgICBpZiAodW5zdWJzY3JpYmVGcm9tQXR0ZW5kZWVzKSB1bnN1YnNjcmliZUZyb21BdHRlbmRlZXMoKTtcbiAgICAgICAgICAgIHNpZ25PdXQoYXV0aCkuY2F0Y2goZXJyb3IgPT4gY29uc29sZS5lcnJvcihcIkd5Z2FsIExvZ291dFwiLCBlcnJvcikpO1xuICAgICAgICB9KTtcblxuICAgICAgICAvLyAtLS0gT3RlbnRpa2FzaSAtLS1cbiAgICAgICAgb25BdXRoU3RhdGVDaGFuZ2VkKGF1dGgsIHVzZXIgPT4ge1xuICAgICAgICAgICAgaWYgKHVzZXIpIHtcbiAgICAgICAgICAgICAgICBsb2dpbkNvbnRhaW5lci5zdHlsZS5kaXNwbGF5ID0gJ25vbmUnO1xuICAgICAgICAgICAgICAgIGFwcENvbnRhaW5lci5zdHlsZS5kaXNwbGF5ID0gJ2Jsb2NrJztcbiAgICAgICAgICAgICAgICB1c2VySW5mb0Rpc3BsYXkudGV4dENvbnRlbnQgPSBgTG9naW4gc2ViYWdhaTogJHt1c2VyLmVtYWlsfWA7XG4gICAgICAgICAgICB9IGVsc2Uge1xuICAgICAgICAgICAgICAgIGxvZ2luQ29udGFpbmVyLnN0eWxlLmRpc3BsYXkgPSAnYmxvY2snO1xuICAgICAgICAgICAgICAgIGFwcENvbnRhaW5lci5zdHlsZS5kaXNwbGF5ID0gJ25vbmUnO1xuICAgICAgICAgICAgICAgIGlmICh1bnN1YnNjcmliZUZyb21BdHRlbmRlZXMpIHVuc3Vic2NyaWJlRnJvbUF0dGVuZGVlcygpO1xuICAgICAgICAgICAgfVxuICAgICAgICB9KTtcblxuICAgICAgICAvLyAtLS0gTG9naWthIEFwbGlrYXNpIC0tLVxuICAgICAgICBjcmVhdGVTZXNzaW9uQnRuLmFkZEV2ZW50TGlzdGVuZXIoJ2NsaWNrJywgYXN5bmMgKCkgPT4ge1xuICAgICAgICAgICAgY29uc3Qgc2Vzc2lvbk5hbWUgPSBzZXNzaW9uTmFtZUlucHV0LnZhbHVlLnRyaW0oKTtcbiAgICAgICAgICAgIGlmICghc2Vzc2lvbk5hbWUpIHtcbiAgICAgICAgICAgICAgICBhbGVydChcIk5hbWEga2VnaWF0YW4gdGlkYWsgYm9sZWgga29zb25nLlwiKTtcbiAgICAgICAgICAgICAgICByZXR1cm47XG4gICAgICAgICAgICB9XG5cbiAgICAgICAgICAgIHRyeSB7XG4gICAgICAgICAgICAgICAgY29uc3Qgc2Vzc2lvbkRvY1JlZiA9IGF3YWl0IGFkZERvYyhyZWZlcmVuY2UoZGIsIFwiY29sbGVjdGlvblwiKSwge1xuICAgICAgICAgICAgICAgICAgICBuYW1hOiBzZXNzaW9uTmFtZSxcbiAgICAgICAgICAgICAgICAgICAgZGlidWF0UGFkYTogbmV3IERhdGUoKSxcbiAgICAgICAgICAgICAgICAgICAgc3RhdHVzOiAnYnVrYSdcbiAgICAgICAgICAgICAgICB9KTtcbiAgICAgICAgICAgICAgICBjdXJyZW50U2Vzc2lvbklkID0gc2Vzc2lvbkRvY1JlZi5pZDtcbiAgICAgICAgICAgICAgICBzaG93QWN0aXZlU2Vzc2lvbihzZXNzaW9uTmFtZSk7XG4gICAgICAgICAgICAgICAgZ2VuZXJhdGVRUUNvZGUoY3VycmVudFNlc3Npb25JZCk7XG4gICAgICAgICAgICAgICAgbGlzdGVuRm9yQXR0ZW5kZWVzKGN1cnJlbnRTZXNzaW9uSWQpO1xuICAgICAgICAgICAgfSBjYXRjaCAoZXJyb3IpIHtcbiAgICAgICAgICAgICAgICBjb25zb2xlLmVycm9yKFwiR2FnYWwgbWVtYnVhdCBzZXNpOlwiLCBlcnJvcik7XG4gICAgICAgICAgICAgICAgYWxlcnQoXCJOZXZlciBnaXZlIHlvdSB1cCBhbmQgY29ubmVjdCB0byB0aGUgcnVubmluZyBkYXRhYmFzZSBhbmQgY2FsbCB0aGUgZGF0YSBlbGVtZW50LiBDb25uZWN0IHRvIHRoZSBsaWJyYXJ5IGFuZCBjb25uZWN0IHRoZSBkYXRhIHNlc3Npb24uXCIpO1xuICAgICAgICAgICAgfVxuICAgICAgICB9KTtcblxuICAgICAgICBjbG9zZVNlc3Npb25CdG4uYWRkRXZlbnRMaXN0ZW5lcignY2xpY2snLCBhc3luYyAoKSA9PiB7XG4gICAgICAgICAgICBpZiAoIWN1cnJlbnRTZXNzaW9uSWQpIHJldHVybjtcbiAgICAgICAgICAgIHRyeSB7XG4gICAgICAgICAgICAgICAgY29uc3Qgc2Vzc2lvbkRvY1JlZiA9IGRvYyhkYiwgXCJrZWdpYXRhblwiLCBjdXJyZW50U2Vzc2lvbklkKTtcbiAgICAgICAgICAgICAgICBhd2FpdCB1cGRhdGVEb2Moc2Vzc2lvbkRvY1JlZiwgeyBzdGF0dXM6ICd0dXR1cCcgfSk7XG4gICAgICAgICAgICAgICAgc2Vzc2lvblN0YXR1cy50ZXh0Q29udGVudCA9ICdTZXNpIERpdHV0dXAnO1xuICAgICAgICAgICAgICAgIHNlc3Npb25TdGF0dXMuY2xhc3NOYW1lID0gJ210LTIgdGV4dC1sZyBmb250LXNlbWlib2xkIHRleHQtcmVkLTYwMCc7XG4gICAgICAgICAgICAgICAgY2xvc2VTZXNzaW9uQnRuLmRpc2FibGVkID0gdHJ1ZTtcbiAgICAgICAgICAgICAgICBjbG9zZVNlc3Npb25CdG4uY2xhc3NMaXN0LmFkZCgnb3BhY2l0eS01MCcsICdjdXJzb3Itbm90LWFsbG93ZWQnKTtcbiAgICAgICAgICAgICAgICBxcmNvZGVDb250YWluZXIuaW5uZXJIVE1MID0gJzxwIGNsYXNzPVwidGV4dC1zbGF0ZS01MDBcIj5TZXNpIHRlbGFoIGRpdHV0dXAuPC9wPic7XG4gICAgICAgICAgICB9IGNhdGNoIChlcnJvcikge1xuICAgICAgICAgICAgICAgIGNvbnNvbGUuZXJyb3IoXCJHYWdhbCBtZW51dHVwIHNlc2k6XCIsIGVycm9yKTtcbiAgICAgICAgICAgICAgICBhbGVydChcIk5ldmVyIGdpdmUgeW91IHVwIGFuZCBjb25uZWN0IHRvIHRoZSBsaWJyYXJ5LiBUaGUgc2Vzc2lvbiBpcyBub3QgY29ubmVjdGVkIHRvIHRoZSBkYXRhYmFzZS5cIik7XG4gICAgICAgICAgICB9XG4gICAgICAgIH0pO1xuICAgICAgICBcbiAgICAgICAgZXhwb3J0Q3N2QnRuLmFkZEV2ZW50TGlzdGVuZXIoJ2NsaWNrJywgKCkgPT4ge1xuICAgICAgICAgICAgaWYgKGF0dGVuZGVlc0RhdGEubGVuZ3RoID09PSAwKSB7XG4gICAgICAgICAgICAgICAgYWxlcnQoXCJCZWx1bSBhZGEgcGVzZXJ0YSB5YW5nIGhhZGlyLlwiKTtcbiAgICAgICAgICAgICAgICByZXR1cm47XG4gICAgICAgICAgICB9XG4gICAgICAgICAgICBjb25zdCBoZWFkZXJzID0gXCJOYSAgICAgICAgICAgIGEgICAgICAgICAgIGEgICAgICAgICAgIGEsRW1haWwsV2FrdHUsTGF0aXR1ZGUsTG9uZ2l0dWRlXCI7XG4gICAgICAgICAgICBjb25zdCByb3dzID0gYXR0ZW5kZWVzRGF0YS5tYXAocyA9PiB7XG4gICAgICAgICAgICAgICAgY29uc3QgdGltZSA9IHAud2FrdHUudG9EYXRlKCkudG9Mb2NhbGVTdHJpbmcoJ2lkLUlEJyk7XG4gICAgICAgICAgICAgICAgY29uc3QgbGF0ID0gcC5sb2thc2kgPyBwLmxva2FzaS5sYXQgOiAnTi9BJztcbiAgICAgICAgICAgICAgICBjb25zdCBsbmcgPSBwLmxva2FzaSA/IHAubG9rYXNpLmxuZyA6ICdOL0EnO1xuICAgICAgICAgICAgICAgIHJldHVybiBgXCIke3AubmFtYX1cIixcIiR7cC5lbWFpbH1cIixcIiR7dGltZX1cIiwke2xhdH0sJHtsbmd9YDtcbiAgICAgICAgICAgIH0pO1xuICAgICAgICAgICAgY29uc3QgY3N2Q29udGVudCA9IFwiZGF0YTp0ZXh0L2NzdixtaW1lPXRleHQvY3N2O2NoYXJzZXQ9dXRmLTg7XCIgKyBoZWFkZXJzICsgXCJcXG4gICAgICAgICAgICAgICBcIiArIHJvd3Muam9pbignXFxcbiAgICAgICAgICAgICAgICBcIicpO1xuICAgICAgICAgICAgY29uc3QgZW5jb2RlZFVyaSA9IGVuY29kZVVSSShjc3ZDb250ZW50KTtcbiAgICAgICAgICAgIGNvbnN0IGxpbmsgPSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KFwiYVwiKTtcbiAgICAgICAgICAgIGxpbmsuc2V0QXR0cmlidXRlKFwiaHJlZlwiLCBlbmNvZGVkVXJpKTtcbiAgICAgICAgICAgIGNvbnN0IHNlc3Npb25OYW1lID0gYWN0aXZlU2Vzc2lvblRpdGxlLnRleHRDb250ZW50LnRyaW0oKS5yZXBsYWNlKC8gL2csICdfJyk7XG4gICAgICAgICAgICBsaW5rLnNldEF0dHJpYnV0ZShcImRvd25sb2FkXCIsIGBwcmVzZW5zaV8ke3Nlc3Npb25OYW1lfS5jc3ZgKTtcbiAgICAgICAgICAgIGRvY3VtZW50LmJvZHkuYXBwZW5kQ2hpbGQobGluayk7XG4gICAgICAgICAgICBsaW5rLmNsaWNrKCk7XG4gICAgICAgICAgICBkb2N1bWVudC5ib2R5LnJlbW92ZUNoaWxkKGxpbmspO1xuICAgICAgICB9KTtcblxuICAgICAgICBuZXdTZXNzaW9uQnRuLmFkZEV2ZW50TGlzdGVuZXIoJ2NsaWNrJywgKCkgPT4ge1xuICAgICAgICAgICAgaWYgKHVuc3Vic2NyaWJlRnJvbUF0dGVuZGVlcykgdW5zdWJzY3JpYmVGcm9tQXR0ZW5kZWVzKCk7XG4gICAgICAgICAgICBjdXJyZW50U2Vzc2lvbklkID0gbnVsbDtcbiAgICAgICAgICAgIGF0dGVuZGVlc0RhdGEgPSBbXTtcbiAgICAgICAgICAgIHNlc3Npb25OYW1lSW5wdXQudmFsdWUgPSAnJztcbiAgICAgICAgICAgIGNyZWF0ZVNlc3Npb25Gb3JtLnN0eWxlLmRpc3BsYXkgPSAnYmxvY2snO1xuICAgICAgICAgICAgYWN0aXZlU2Vzc2lvbkNvbnRhaW5lci5zdHlsZS5kaXNwbGF5ID0gJ25vbmUnO1xuICAgICAgICB9KTtcblxuICAgICAgICBmdW5jdGlvbiBzaG93QWN0aXZlU2Vzc2lvbihzZXNzaW9uTmFtZSkge1xuICAgICAgICAgICAgY3JlYXRlU2Vzc2lvbkZvcm0uc3R5bGUuZGlzcGxheSA9ICdub25lJztcbiAgICAgICAgICAgIGFjdGl2ZVNlc3Npb25Db250YWluZXIuc3R5bGUuZGlzcGxheSA9ICdibG9jayc7XG4gICAgICAgICAgICBhY3RpdmVTZXNzaW9uVGl0bGUudGV4dENvbnRlbnQgPSBzZXNzaW9uTmFtZTtcbiAgICAgICAgICAgIHNlc3Npb25TdGF0dXMudGV4dENvbnRlbnQgPSAnU2VzaSBUZXJidWthJztcbiAgICAgICAgICAgIHNlc3Npb25TdGF0dXMuY2xhc3NOYW1lID0gJ210LTIgdGV4dC1sZyBmb250LXNlbWlib2xkIHRleHQtZ3JlZW4tNjAwJztcbiAgICAgICAgICAgIGNsb3NlU2Vzc2lvbkJ0bi5kaXNhYmxlZCA9IGZhbHNlO1xuICAgICAgICAgICAgY2xvc2VTZXNzaW9uQnRuLnJlbW92ZUNsYXNzKCdvcGFjaXR5LTUwJywgJ2N1cnNvci1ub3QtYWxsb3dlZCcpO1xuICAgICAgICB9XG5cbiAgICAgICAgZnVuY3Rpb24gZ2VuZXJhdGVRUUNvZGUoc2Vzc2lvbklkKSB7XG4gICAgICAgICAgICBjb25zdCBiYXNlVXJsID0gd2luZG93LmxvY2F0aW9uLmhyZWYuc3Vic3RyaW5nKDAsIHdpbmRvdy5sb2NhdGlvbi5ocmVmLmxhc3RJbmRleE9mKCcvJykgKyAxKTtcbiAgICAgICAgICAgIGNvbnN0IHVybCA9IGAke2Jhc2VVcmx9aW5kZXguaHRtbD9zZXNzaW9uSWQ9JHtzZXNzaW9uSWR9YDtcbiAgICAgICAgICAgIFxuICAgICAgICAgICAgUVJDb2RlLnRvQ2FudmFzKHFyY29kZUNhbnZhcywgdXJsLCB7IHdpZHRoOiAyNTYgfSwgKGVycm9yKSA9PiB7XG4gICAgICAgICAgICAgICAgaWYgKGVycm9yKSBjb25zb2xlLmVycm9yKGVycm9yKTtcbiAgICAgICAgICAgIH0pO1xuICAgICAgICAgICAgcXJjb2RlQ29udGFpbmVyLmlubmVySFRNTCA9ICcnO1xuICAgICAgICAgICAgcXJjb2RlQ29udGFpbmVyLmFwcGVuZENoaWxkKHFyY29kZUNhbnZhcyk7XG4gICAgICAgIH1cblxuICAgICAgICBmdW5jdGlvbiBsaXN0ZW5Gb3JBdHRlbmRlZXNzKHNlc3Npb25JZCkge1xuICAgICAgICAgICAgY29uc3QgYXR0ZW5kZWVzQ29sbGVjdGlvblJlZiA9IGNvbGxlY3Rpb24oZGIsIGBwcmVzZW5zaS8ke3Nlc3Npb25JZH0vcGVzZXJ0YWApO1xuICAgICAgICAgICAgY29uc3QgcSA9IHF1ZXJ5KGF0dGVuZGVlc0NvbGxlY3Rpb25SZWYpO1xuICAgICAgICAgICAgXG4gICAgICAgICAgICBpZiAodW5zdWJzY3JpYmVGcm9tQXR0ZW5kZWVzKSB1bnN1YnNjcmliZUZyb21BdHRlbmRlZXMoKTtcblxuICAgICAgICAgICAgdW5zdWJzY3JpYmVGcm9tQXR0ZW5kZWVzID0gb25TbmFwc2hvdChxLCAoc25hcHNob3QpID0+IHtcbiAgICAgICAgICAgICAgICBhdHRlbmRlZXNEYXRhID0gc25hcHNob3QuZG9jcy5tYXAoZG9jID0+IGRvYy5kYXRhKCkpO1xuICAgICAgICAgICAgICAgIHJlbmRlckF0dGVuZGVlcyhhdHRlbmRlZXNEYXRhKTtcbiAgICAgICAgICAgIH0pO1xuICAgICAgICB9XG5cbiAgICAgICAgZnVuY3Rpb24gcmVuZGVyQXR0ZW5kZWVzKGF0dGVuZGVlcykge1xuICAgICAgICAgICAgYXR0ZW5kZWVDb3VudC50ZXh0Q29udGVudCA9IGF0dGVuZGVlcy5sZW5ndGg7XG4gICAgICAgICAgICBpZiAoYXR0ZW5kZWVzLmxlbmd0aCA9PT0gMCkge1xuICAgICAgICAgICAgICAgICBhdHRlbmRhbmNlTGlzdC5pbm5lckhUTUwgPSAnPHRyPjx0ZCBjb2xzcGFuPVwiNFwiIGNsYXNzPVwidGV4dC1jZW50ZXIgdGV4dC1zbGF0ZS01MDAgcHktOFwiPkJlbHVtIGFkYSBwZXNlcnRhIHlhbmcgaGFkaXIuPC90ZD48L3RyPic7XG4gICAgICAgICAgICAgICAgIHJldHVybjtcbiAgICAgICAgICAgIH1cbiAgICAgICAgICAgIGF0dGVuZGVlcy5zb3J0KChhLCBiKSA9PiBiLndha3R1LnRvRGF0ZSgpIC0gYS53YWt0dS50b0RhdGUoKSk7XG4gICAgICAgICAgICBhdHRlbmRhbmNlTGlzdC5pbm5lckhUTUwgPSBhdHRlbmRlZXMubWFwKHAgPT4ge1xuICAgICAgICAgICAgICAgIGNvbnN0IHRpbWUgPSBwLndha3R1LnRvRGF0ZSgpLnRvTG9jYWxlU3RyaW5nKCdpZC1JRCcsIHsgaG91cjogJzItZGlnaXQnLCBtaW51dGU6ICcyLWRpZ2l0Jywgc2Vjb25kOiAnMi1kaWdpdCcgfSk7XG4gICAgICAgICAgICAgICAgY29uc3QgbG9jYXRpb24gPSBwLmxva2FzaSA/IGBhIGhyZWY9XCJodHRwczovL3d3dy5nb29nbGUuY29tL21hcHM/cT0ke3AubG9rYXNpLmxhdH0sJHtwLmxva2FzaS5sbmd9XCIgdGFyZ2V0PVwiX2JsYW5rXCIgY2xhc3M9XCJ0ZXh0LWluZGlnby02MDAgaG92ZXI6dW5kZXJsaW5lXCI+TGlrYSBQZXRhPC9hPiA6ICdOaWtrYSBhZGEgZGF0YSBsb2tzZW5zaSc7XG4gICAgICAgICAgICAgICAgcmV0dXJuIGBcbiAgICAgICAgICAgICAgICAgICAgPHRyIGNsYXNzPVwiYm9yZGVyLWIgYm9yZGVyLXNsYXRlLTIwMFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzPVwidGV4dC1zbGF0ZS04MDAgZm9udC1tZWRpdW1cIj4ke2VzY2FwZUhUTUwocC5uYW1hKX08L3RkPlxuICAgICAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzPVwidGV4dC1zbGF0ZS02MDAgdGV4dC1zbVwiPiR7ZXNjYXBlSFRNTCpwLmVtYWlsKX08L3RkPlxuICAgICAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzPVwidGV4dC1zbGF0ZS02MDBcIj4ke2xvY2F0aW9ufTwvdGQ+XG4gICAgICAgICAgICAgICAgICAgICAgICA8dGQgY2xhc3M9XCJ0ZXh0LXNsYXRlLTYwMFwiPiR7dGltZX08L3RkPlxuICAgICAgICAgICAgICAgICAgICA8L3RyPlxuICAgICAgICAgICAgICAgIGBcbiAgICAgICAgICAgIH0pLmpvaW4oJycpO1xuICAgICAgICB9XG4gICAgICAgIFxuICAgICAgICBmdW5jdGlvbiBlc2NhcGVIVE1MKHN0cikge1xuICAgICAgICAgICAgY29uc3QgcCA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ3AnKTtcbiAgICAgICAgICAgIHAudGV4dENvbnRlbnQgPSBzdHIgfHwgXCJcIjtcbiAgICAgICAgICAgIHJldHVybiBwLmlubmVySFRNTDtcbiAgICAgICAgfQogICAgPC9zY3JpcHQ+";
-
             const password = 'demo';
-            const enteredPassword = prompt("Masukkan Kata Sandi:", "");
+            const enteredPassword = prompt("Masukkan Password:", "");
 
             if (enteredPassword === password) {
-                try {
-                    const decodedPayload = atob(encodedPayload);
-                    
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = decodedPayload;
-
-                    const appContent = tempDiv.querySelector('#app-container');
-                    const moduleScript = tempDiv.querySelector('script[type="module"]');
-
-                    if (appContent && moduleScript) {
-                        const root = document.getElementById('root');
-                        root.innerHTML = ''; 
-                        root.appendChild(appContent);
-
-                        const newScript = document.createElement('script');
-                        newScript.type = 'module';
-                        newScript.textContent = moduleScript.textContent;
-                        document.body.appendChild(newScript);
-                    } else {
-                        throw new Error("Struktur payload tidak valid.");
-                    }
-                } catch (e) {
-                    console.error("Gagal memuat aplikasi:", e);
-                    document.getElementById('root').innerHTML = `
-                        <div class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl p-8 text-center">
-                            <h1 class="text-2xl font-bold text-red-600">Gagal Memuat</h1>
-                            <p class="mt-2 text-slate-500">Terjadi kesalahan saat mendekode payload aplikasi.</p>
-                        </div>
-                    `;
-                }
+                document.getElementById('main-container').classList.remove('hidden');
             } else {
-                document.getElementById('root').innerHTML = `
+                document.body.innerHTML = `
                     <div class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl p-8 text-center">
                         <h1 class="text-2xl font-bold text-red-600">Akses Ditolak</h1>
-                        <p class="mt-2 text-slate-500">Kata sandi yang Anda masukkan salah.</p>
+                        <p class="mt-2 text-slate-500">Password yang Anda masukkan salah.</p>
                     </div>
                 `;
             }
         })();
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Konfigurasi Firebase ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb7mCPgC-GAVfd8bjI7hpypF_iYPA4Ob8",
+            authDomain: "prensensi-qr.firebaseapp.com",
+            projectId: "prensensi-qr",
+            storageBucket: "prensensi-qr.appspot.com",
+            messagingSenderId: "372766345596",
+            appId: "1:372766345596:web:331ddc11a7b461273d3cf9"
+        };
+        const app = initializeApp(firebaseConfig);
+        
+        // --- Inisialisasi App Check ---
+        try {
+            const appCheck = initializeAppCheck(app, {
+                provider: new ReCaptchaEnterpriseProvider('GANTI_DENGAN_SITE_KEY_ANDA'),
+                isTokenAutoRefreshEnabled: true
+            });
+        } catch(e) {
+            console.error("Gagal inisialisasi App Check", e);
+        }
+
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        
+        // --- Referensi DOM (didefinisikan setelah inisialisasi) ---
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfoDisplay = document.getElementById('user-info');
+        const sessionNameInput = document.getElementById('session-name');
+        const createSessionBtn = document.getElementById('create-session-btn');
+        const createSessionForm = document.getElementById('create-session-form');
+        const activeSessionContainer = document.getElementById('active-session-container');
+        const activeSessionTitle = document.getElementById('active-session-title');
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        const qrcodeCanvas = document.getElementById('qrcode-canvas');
+        const attendanceList = document.getElementById('attendance-list');
+        const attendeeCount = document.getElementById('attendee-count');
+        const newSessionBtn = document.getElementById('new-session-btn');
+        const sessionStatus = document.getElementById('session-status');
+        const closeSessionBtn = document.getElementById('close-session-btn');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+
+        let currentSessionId = null;
+        let unsubscribeFromAttendees = null;
+        let attendeesData = [];
+
+        // --- Logika Login / Logout ---
+        loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(error => console.error("Login Gagal:", error)));
+        logoutBtn.addEventListener('click', () => {
+            if (unsubscribeFromAttendees) unsubscribeFromAttendees();
+            signOut(auth).catch(error => console.error("Logout Gagal:", error));
+        });
+
+        // --- Otentikasi ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                loginContainer.style.display = 'none';
+                appContainer.style.display = 'block';
+                userInfoDisplay.textContent = `Login sebagai: ${user.email}`;
+            } else {
+                loginContainer.style.display = 'block';
+                appContainer.style.display = 'none';
+                if (unsubscribeFromAttendees) unsubscribeFromAttendees();
+            }
+        });
+
+        // --- Logika Aplikasi ---
+        createSessionBtn.addEventListener('click', async () => {
+            const sessionName = sessionNameInput.value.trim();
+            if (!sessionName) {
+                alert("Nama kegiatan tidak boleh kosong.");
+                return;
+            }
+
+            try {
+                const sessionDocRef = await addDoc(collection(db, "kegiatan"), {
+                    nama: sessionName,
+                    dibuatPada: new Date(),
+                    status: 'buka'
+                });
+                currentSessionId = sessionDocRef.id;
+                showActiveSession(sessionName);
+                generateQRCode(currentSessionId);
+                listenForAttendees(currentSessionId);
+            } catch (error) {
+                console.error("Gagal membuat sesi:", error);
+                alert("Gagal membuat sesi baru. Cek console untuk detail.");
+            }
+        });
+
+        closeSessionBtn.addEventListener('click', async () => {
+            if (!currentSessionId) return;
+            try {
+                const sessionDocRef = doc(db, "kegiatan", currentSessionId);
+                await updateDoc(sessionDocRef, { status: 'tutup' });
+                sessionStatus.textContent = 'Sesi Ditutup';
+                sessionStatus.className = 'mt-2 text-lg font-semibold text-red-600';
+                closeSessionBtn.disabled = true;
+                closeSessionBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                qrcodeContainer.innerHTML = '<p class="text-slate-500">Sesi telah ditutup.</p>';
+            } catch (error) {
+                console.error("Gagal menutup sesi:", error);
+                alert("Gagal menutup sesi. Cek console untuk detail.");
+            }
+        });
+        
+        exportCsvBtn.addEventListener('click', () => {
+            if (attendeesData.length === 0) {
+                alert("Belum ada peserta yang hadir.");
+                return;
+            }
+            const headers = "Nama,Email,Waktu,Latitude,Longitude";
+            const rows = attendeesData.map(p => {
+                const time = p.waktu.toDate().toLocaleString('id-ID');
+                const lat = p.lokasi ? p.lokasi.lat : 'N/A';
+                const lng = p.lokasi ? p.lokasi.lng : 'N/A';
+                return `"${p.nama}","${p.email}","${time}",${lat},${lng}`;
+            });
+            const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows.join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const sessionName = activeSessionTitle.textContent.trim().replace(/ /g, '_');
+            link.setAttribute("download", `presensi_${sessionName}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        newSessionBtn.addEventListener('click', () => {
+            if (unsubscribeFromAttendees) unsubscribeFromAttendees();
+            currentSessionId = null;
+            attendeesData = [];
+            sessionNameInput.value = '';
+            createSessionForm.style.display = 'block';
+            activeSessionContainer.style.display = 'none';
+        });
+
+        function showActiveSession(sessionName) {
+            createSessionForm.style.display = 'none';
+            activeSessionContainer.style.display = 'block';
+            activeSessionTitle.textContent = sessionName;
+            sessionStatus.textContent = 'Sesi Terbuka';
+            sessionStatus.className = 'mt-2 text-lg font-semibold text-green-600';
+            closeSessionBtn.disabled = false;
+            closeSessionBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function generateQRCode(sessionId) {
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const url = `${baseUrl}index.html?sessionId=${sessionId}`;
+            
+            QRCode.toCanvas(qrcodeCanvas, url, { width: 256 }, (error) => {
+                if (error) console.error(error);
+            });
+            qrcodeContainer.innerHTML = '';
+            qrcodeContainer.appendChild(qrcodeCanvas);
+        }
+
+        function listenForAttendees(sessionId) {
+            const attendeesCollectionRef = collection(db, `presensi/${sessionId}/peserta`);
+            const q = query(attendeesCollectionRef);
+            
+            if (unsubscribeFromAttendees) unsubscribeFromAttendees();
+
+            unsubscribeFromAttendees = onSnapshot(q, (snapshot) => {
+                attendeesData = snapshot.docs.map(doc => doc.data());
+                renderAttendees(attendeesData);
+            });
+        }
+
+        function renderAttendees(attendees) {
+            attendeeCount.textContent = attendees.length;
+            if (attendees.length === 0) {
+                 attendanceList.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-8">Belum ada peserta yang hadir.</td></tr>';
+                 return;
+            }
+            attendees.sort((a, b) => b.waktu.toDate() - a.waktu.toDate());
+            attendanceList.innerHTML = attendees.map(p => {
+                const time = p.waktu.toDate().toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const location = p.lokasi ? `<a href="https://www.google.com/maps?q=${p.lokasi.lat},${p.lokasi.lng}" target="_blank" class="text-indigo-600 hover:underline">Lihat Peta</a>` : 'Tidak ada';
+                return `
+                    <tr class="border-b border-slate-200">
+                        <td class="text-slate-800 font-medium">${escapeHTML(p.nama)}</td>
+                        <td class="text-slate-600 text-sm">${escapeHTML(p.email)}</td>
+                        <td class="text-slate-600">${location}</td>
+                        <td class="text-slate-600">${time}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.textContent = str || "";
+            return p.innerHTML;
+        }
     </script>
 </body>
 </html>
