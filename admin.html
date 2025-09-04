@@ -1,70 +1,273 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin</title>
-<style>
-  body{font-family:system-ui,Arial,sans-serif;margin:2rem;text-align:center;background:#f7fafc;color:#1f2937}
-  input,button{padding:.6rem .8rem;font-size:1rem;margin:.2rem}
-  #app{display:none; text-align: left; max-width: 980px; margin: 2rem auto;}
-  textarea{width:100%;height:150px}
-  .card{max-width:520px;margin:auto;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:1.4rem}
-  .muted{color:#6b7280;font-size:.9rem}
-</style>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presensi QR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
 
-<div class="card">
-  <h2 style="margin:0 0 .5rem 0;">Masukkan Password</h2>
-  <p class="muted" style="margin-top:0;">File ini dilindungi enkripsi sederhana (client-side).</p>
-  <input id="pw" type="password" placeholder="Password" autofocus>
-  <button id="open">Buka</button>
-  <p id="msg" style="color:#b91c1c;font-weight:600;"></p>
-  <details style="margin-top:.5rem"><summary class="muted">Lihat payload terenkripsi</summary>
-    <textarea readonly id="encView"></textarea>
-  </details>
-</div>
+    <div id="app-container" class="w-full max-w-md mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+            
+            <!-- Tampilan Login -->
+            <div id="login-container">
+                <h1 class="text-4xl font-bold text-slate-900">Presensi QR</h1>
+                <p class="mt-2 text-slate-500 mb-8">Login dengan akun Google untuk mencatat kehadiran Anda.</p>
+                <button id="login-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 inline-flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C42.021,35.596,44,30.138,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                    Login dengan Google
+                </button>
+            </div>
 
-<div id="app"></div>
+            <!-- Tampilan Presensi (Setelah Login) -->
+            <div id="attendance-container" class="hidden">
+                <div id="user-info" class="mb-6 text-left">
+                    <p class="text-sm text-slate-500">Selamat datang,</p>
+                    <p id="user-name" class="font-semibold text-slate-800"></p>
+                    <p id="user-email" class="text-sm text-slate-500"></p>
+                </div>
 
-<script type="module">
-const ENC_B64 = `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`;
-document.getElementById('encView').value = ENC_B64;
+                <div id="status-display" class="w-full p-4 rounded-lg text-center mb-6">
+                    <h2 id="status-title" class="text-xl font-bold"></h2>
+                    <p id="status-message" class="mt-1"></p>
+                </div>
+                
+                 <div id="history-section">
+                    <h3 class="text-xl font-semibold text-slate-800 text-left mb-4">Riwayat Presensi Anda</h3>
+                    <div id="history-list" class="space-y-3 h-48 overflow-y-auto text-left">
+                        <!-- Riwayat akan diisi oleh JavaScript -->
+                    </div>
+                </div>
 
-const enc = new TextEncoder(), dec = new TextDecoder();
-const toBytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+                <button id="logout-btn" class="mt-8 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Logout</button>
+            </div>
+        </div>
+    </div>
 
-async function deriveKey(password, salt) {
-  const keyMat = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    {name:'PBKDF2', salt, iterations:100_000, hash:'SHA-256'},
-    keyMat, {name:'AES-GCM', length:256}, false, ['decrypt']
-  );
-}
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-async function decrypt(b64, password) {
-  const buf = toBytes(b64);
-  const salt = buf.slice(0,16);
-  const iv   = buf.slice(16,28);
-  const ct   = buf.slice(28).buffer;
-  const key  = await deriveKey(password, salt);
-  const pt   = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct);
-  return dec.decode(pt);
-}
+        // --- Konfigurasi Firebase ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb7mCPgC-GAVfd8bjI7hpypF_iYPA4Ob8",
+            authDomain: "prensensi-qr.firebaseapp.com",
+            projectId: "prensensi-qr",
+            storageBucket: "prensensi-qr.appspot.com",
+            messagingSenderId: "372766345596",
+            appId: "1:372766345596:web:331ddc11a7b461273d3cf9"
+        };
+        const app = initializeApp(firebaseConfig);
+        
+        // --- Referensi DOM ---
+        const loginContainer = document.getElementById('login-container');
+        const attendanceContainer = document.getElementById('attendance-container');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userNameDisplay = document.getElementById('user-name');
+        const userEmailDisplay = document.getElementById('user-email');
+        const statusDisplay = document.getElementById('status-display');
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const historyList = document.getElementById('history-list');
+        
+        // --- Inisialisasi App Check dengan Penanganan Error ---
+        try {
+            // PERBAIKAN: Mengganti Site Key yang mungkin tidak valid dengan placeholder.
+            // Pastikan Anda mengganti placeholder ini dengan Site Key reCAPTCHA Enterprise yang benar dari Google Cloud Console.
+            const appCheck = initializeAppCheck(app, {
+                provider: new ReCaptchaEnterpriseProvider('6LeGTL0rAAAAAIYqQtjXWsZ3ZtA85KwriM9VQspE'),
+                isTokenAutoRefreshEnabled: true
+            });
+        } catch (error) {
+            console.error("Inisialisasi App Check Gagal:", error);
+            loginContainer.innerHTML = `
+                <h1 class="text-4xl font-bold text-red-600">Error Konfigurasi</h1>
+                <p class="mt-2 text-slate-500 mb-8">Gagal menginisialisasi keamanan (App Check). Pastikan Site Key reCAPTCHA Enterprise sudah benar dan API telah diaktifkan di Google Cloud Console.</p>
+            `;
+        }
 
-async function run() {
-  const pw = document.getElementById('pw').value;
-  const msg = document.getElementById('msg');
-  msg.textContent = '';
-  try {
-    const html = await decrypt(ENC_B64, pw);
-    const app = document.getElementById('app');
-    app.innerHTML = html;
-    app.style.display = 'block';
-    document.querySelector('.card').style.display = 'none';
-  } catch(e) {
-    msg.textContent = 'Password salah atau payload rusak.';
-    console.error(e);
-  }
-}
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        
+        let unsubscribeFromHistory = null;
+        
+        // --- Logika Login / Logout ---
+        loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(error => console.error("Login Gagal:", error)));
+        logoutBtn.addEventListener('click', () => signOut(auth).catch(error => console.error("Logout Gagal:", error)));
 
-document.getElementById('open').addEventListener('click', run);
-document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') run(); });
-</script>
+        // --- Otentikasi ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                loginContainer.style.display = 'none';
+                attendanceContainer.style.display = 'block';
+                userNameDisplay.textContent = user.displayName || 'Nama Tidak Ditemukan';
+                userEmailDisplay.textContent = user.email;
+                
+                if (unsubscribeFromHistory) unsubscribeFromHistory();
+                listenForHistory(user.uid);
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const sessionId = urlParams.get('sessionId');
+                
+                if (sessionId) {
+                    handleAttendance(sessionId, user);
+                } else {
+                    showStatus('info', 'Tidak Ada Sesi Aktif', 'Buka halaman ini dari QR code presensi.');
+                }
+            } else {
+                loginContainer.style.display = 'block';
+                attendanceContainer.style.display = 'none';
+                 if (unsubscribeFromHistory) unsubscribeFromHistory();
+            }
+        });
+        
+        async function handleAttendance(sessionId, user) {
+            showStatus('loading', 'Memproses...', 'Mohon tunggu sebentar.');
+
+            try {
+                // 1. Periksa apakah user sudah pernah absen di sesi ini
+                const attendanceDocRef = doc(db, `presensi/${sessionId}/peserta`, user.uid);
+                const attendanceDocSnap = await getDoc(attendanceDocRef);
+
+                if (attendanceDocSnap.exists()) {
+                    showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
+                    return; // Hentikan proses
+                }
+
+                // 2. Periksa status sesi (terbuka atau tertutup)
+                const sessionDocRef = doc(db, "kegiatan", sessionId);
+                const sessionDocSnap = await getDoc(sessionDocRef);
+
+                if (!sessionDocSnap.exists()) {
+                    showStatus('error', 'Sesi Tidak Ditemukan', 'Sesi presensi ini tidak valid atau sudah dihapus.');
+                    return;
+                }
+                
+                const sessionData = sessionDocSnap.data();
+                if (sessionData.status === 'tutup') {
+                    showStatus('error', 'Sesi Ditutup', 'Sesi presensi untuk kegiatan ini sudah ditutup oleh admin.');
+                    return;
+                }
+
+                // 3. Jika semua valid, lanjutkan proses presensi
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const locationData = { lat: latitude, lng: longitude };
+                    await recordAttendance(sessionId, user, sessionData.nama, locationData);
+                }, async (error) => {
+                    console.warn("Gagal mendapatkan lokasi:", error.message);
+                    await recordAttendance(sessionId, user, sessionData.nama, null); // Tetap lanjutkan tanpa data lokasi
+                });
+
+            } catch (error) {
+                console.error("Error saat menangani presensi:", error);
+                if (error.code === 'permission-denied') {
+                     showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
+                } else {
+                     showStatus('error', 'Gagal', 'Terjadi kesalahan. Silakan coba lagi.');
+                }
+            }
+        }
+
+        async function recordAttendance(sessionId, user, sessionName, locationData) {
+            const now = new Date();
+            const attendanceData = {
+                nama: user.displayName,
+                email: user.email,
+                waktu: now,
+                lokasi: locationData,
+            };
+            const userLogData = {
+                namaSesi: sessionName,
+                waktu: now,
+                sessionId: sessionId,
+            };
+
+            try {
+                // Simpan ke daftar hadir global
+                const attendanceDocRef = doc(db, `presensi/${sessionId}/peserta`, user.uid);
+                await setDoc(attendanceDocRef, attendanceData);
+
+                // Simpan ke riwayat pribadi user
+                const logDocRef = doc(db, `users/${user.uid}/logs`, sessionId); // Gunakan sessionId sebagai ID log
+                await setDoc(logDocRef, userLogData);
+                
+                showStatus('success', 'Berhasil!', `Presensi Anda untuk "${sessionName}" telah tercatat.`);
+            } catch (error) {
+                 console.error("Error saat mencatat presensi:", error);
+                 if (error.code === 'permission-denied') {
+                     showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
+                 } else {
+                     showStatus('error', 'Gagal', 'Gagal mencatat data. Cek console untuk detail.');
+                 }
+            }
+        }
+        
+        function listenForHistory(userId) {
+            const historyCollectionRef = collection(db, `users/${userId}/logs`);
+            const q = query(historyCollectionRef, orderBy('waktu', 'desc'));
+            
+            unsubscribeFromHistory = onSnapshot(q, 
+                (snapshot) => { // Callback jika berhasil
+                    if (snapshot.empty) {
+                        historyList.innerHTML = '<p class="text-slate-500 text-center py-4">Belum ada riwayat presensi.</p>';
+                        return;
+                    }
+                    historyList.innerHTML = snapshot.docs.map(doc => {
+                        const log = doc.data();
+                        const time = log.waktu.toDate().toLocaleString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        });
+                        return `
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <p class="font-medium text-slate-800">${escapeHTML(log.namaSesi)}</p>
+                                <p class="text-xs text-slate-500">${time}</p>
+                            </div>
+                        `;
+                    }).join('');
+                },
+                (error) => { // Callback jika terjadi error
+                    console.error("Gagal memuat riwayat:", error);
+                    historyList.innerHTML = `<div class="text-red-600 bg-red-100 p-3 rounded-lg text-center">
+                        <p class="font-semibold">Gagal Memuat Riwayat</p>
+                        <p class="text-sm">Pastikan aturan keamanan Firebase sudah benar dan dipublikasikan.</p>
+                    </div>`;
+                }
+            );
+        }
+        
+        function showStatus(type, title, message) {
+            const colors = {
+                info: 'bg-blue-100 text-blue-800',
+                success: 'bg-green-100 text-green-800',
+                warning: 'bg-amber-100 text-amber-800',
+                error: 'bg-red-100 text-red-800',
+                loading: 'bg-slate-100 text-slate-800'
+            };
+            statusDisplay.className = `w-full p-4 rounded-lg text-center mb-6 ${colors[type]}`;
+            statusTitle.textContent = title;
+            statusMessage.textContent = message;
+        }
+
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.textContent = str || "";
+            return p.innerHTML;
+        }
+    </script>
+</body>
+</html>
+
