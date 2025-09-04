@@ -3,345 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Presensi QR - Peserta</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <!-- Tailwind CSS CDN - For development only. Use build version in production -->
+    <title>Presensi QR</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Library untuk QR Scanner -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        
-        .glass-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        }
-        
-        .glass-card-white {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-        }
-        
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .gradient-bg-success {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-        
-        .gradient-bg-warning {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-        
-        #qr-reader {
-            width: 100%; 
-            max-width: 500px; 
-            margin: 0 auto;
-            border: 2px dashed rgba(255,255,255,0.3); 
-            border-radius: 20px; 
-            overflow: hidden;
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .log-card { 
-            transition: all 0.3s ease; 
-            background: rgba(255,255,255,0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-        } 
-        
-        .log-card:hover { 
-            transform: translateY(-8px); 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            background: rgba(255,255,255,0.95);
-        }
-        
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-        }
-        
-        .btn-modern {
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn-modern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn-modern:hover::before {
-            left: 100%;
-        }
-        
-        .btn-modern:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-        
-        .floating {
-            animation: floating 3s ease-in-out infinite;
-        }
-        
-        @keyframes floating {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-        
-        .pulse-glow {
-            animation: pulse-glow 2s ease-in-out infinite alternate;
-        }
-        
-        @keyframes pulse-glow {
-            from { box-shadow: 0 0 20px rgba(102, 126, 234, 0.5); }
-            to { box-shadow: 0 0 30px rgba(102, 126, 234, 0.8); }
-        }
-        
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .status-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-        
-        .status-pending {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-        }
-        
-        .status-error {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-        
+        body { font-family: 'Inter', sans-serif; }
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
-        
-        .scan-animation {
-            position: relative;
-        }
-        
-        .scan-animation::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #667eea, transparent);
-            animation: scan-line 2s linear infinite;
-        }
-        
-        @keyframes scan-line {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
     </style>
 </head>
-<body class="min-h-screen py-8 px-4">
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-4xl mx-auto">
-        <!-- Tampilan Login -->
-        <div id="login-container" class="flex items-center justify-center min-h-screen">
-            <div class="glass-card-white rounded-3xl p-12 text-center max-w-md w-full card-hover">
-                <div class="mb-8">
-                    <div class="w-20 h-20 gradient-bg rounded-full flex items-center justify-center mx-auto mb-6 floating">
-                        <i class="fas fa-qrcode text-white text-3xl"></i>
-                    </div>
-                    <h1 class="text-4xl font-bold gradient-text mb-2">Selamat Datang</h1>
-                    <p class="text-slate-600 text-lg">Lakukan presensi dengan mudah menggunakan QR Code</p>
-                </div>
-                
-                <button id="login-btn" class="btn-modern gradient-bg text-white font-semibold py-4 px-8 rounded-2xl w-full text-lg inline-flex items-center justify-center">
-                    <i class="fab fa-google mr-3 text-xl"></i>
+    <div id="app-container" class="w-full max-w-md mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+            
+            <!-- Tampilan Login -->
+            <div id="login-container">
+                <h1 class="text-4xl font-bold text-slate-900">Presensi QR</h1>
+                <p class="mt-2 text-slate-500 mb-8">Login dengan akun Google untuk mencatat kehadiran Anda.</p>
+                <button id="login-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 inline-flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C42.021,35.596,44,30.138,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
                     Login dengan Google
                 </button>
-                
-                <div class="mt-8 text-sm text-slate-500">
-                    <i class="fas fa-shield-alt mr-2"></i>
-                    Aman dan Terpercaya
-                </div>
-            </div>
-        </div>
-
-        <!-- Tampilan Aplikasi Utama (Setelah Login) -->
-        <div id="app-container" class="hidden">
-            <!-- Header dengan User Info -->
-            <div class="glass-card-white rounded-3xl p-8 mb-8">
-                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
-                    <div class="mb-4 lg:mb-0">
-                        <h1 class="text-5xl font-bold gradient-text mb-2">Presensi QR Peserta</h1>
-                        <p id="subtitle" class="text-slate-600 text-lg">Pindai QR Code untuk melakukan presensi</p>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        <div class="text-right mb-3">
-                            <p id="user-name" class="font-semibold text-slate-800 text-lg"></p>
-                            <p id="user-email" class="text-sm text-slate-500"></p>
-                        </div>
-                        <button id="logout-btn" class="btn-modern glass-card px-6 py-3 rounded-2xl text-slate-700 font-semibold">
-                            <i class="fas fa-sign-out-alt mr-2"></i>
-                            Logout
-                        </button>
-                    </div>
-                </div>
             </div>
 
-            <!-- Status Auto Scan -->
-            <div id="auto-scan-status" class="hidden mb-8">
-                <div class="glass-card rounded-3xl p-6 text-center">
-                    <div class="flex items-center justify-center mb-4">
-                        <div class="w-16 h-16 gradient-bg-success rounded-full flex items-center justify-center mr-4 pulse-glow">
-                            <i class="fas fa-check text-white text-2xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-bold text-white mb-1">Presensi Berhasil!</h3>
-                            <p class="text-white/80">Data Anda telah tercatat dalam sistem</p>
-                        </div>
-                    </div>
-                    <div id="status-message" class="font-medium text-center text-white text-lg"></div>
+            <!-- Tampilan Presensi (Setelah Login) -->
+            <div id="attendance-container" class="hidden">
+                <div id="user-info" class="mb-6 text-left">
+                    <p class="text-sm text-slate-500">Selamat datang,</p>
+                    <p id="user-name" class="font-semibold text-slate-800"></p>
+                    <p id="user-email" class="text-sm text-slate-500"></p>
                 </div>
-            </div>
 
-            <!-- Scanner Section -->
-            <div id="scanner-section" class="glass-card-white rounded-3xl p-8 mb-8 card-hover">
-                <div class="text-center mb-8">
-                    <h2 class="text-3xl font-bold gradient-text mb-4">
-                        <i class="fas fa-camera mr-3"></i>
-                        Pindai QR Code
-                    </h2>
-                    <p class="text-slate-600">Arahkan kamera ke QR Code yang ditampilkan oleh admin</p>
+                <div id="status-display" class="w-full p-4 rounded-lg text-center mb-6">
+                    <h2 id="status-title" class="text-xl font-bold"></h2>
+                    <p id="status-message" class="mt-1"></p>
                 </div>
                 
-                <div class="flex flex-col lg:flex-row gap-8 items-center">
-                    <div class="lg:w-1/2">
-                        <div id="qr-reader" class="scan-animation"></div>
-                        <div class="mt-6 text-center">
-                            <button id="scan-button" class="btn-modern gradient-bg text-white font-semibold py-4 px-8 rounded-2xl text-lg">
-                                <i class="fas fa-play mr-2"></i>
-                                Mulai Pindai
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="lg:w-1/2">
-                        <div class="glass-card rounded-3xl p-6">
-                            <h3 class="text-xl font-bold text-white mb-4">
-                                <i class="fas fa-info-circle mr-2"></i>
-                                Cara Penggunaan
-                            </3>
-                            <div class="space-y-3 text-white/90">
-                                <div class="flex items-start">
-                                    <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-white text-sm font-bold mr-3 mt-0.5">1</div>
-                                    <p>Klik tombol "Mulai Pindai" untuk mengaktifkan kamera</p>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-white text-sm font-bold mr-3 mt-0.5">2</div>
-                                    <p>Arahkan kamera ke QR Code yang ditampilkan admin</p>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-white text-sm font-bold mr-3 mt-0.5">3</div>
-                                    <p>Presensi akan tercatat otomatis setelah QR Code terdeteksi</p>
-                                </div>
-                            </div>
-                        </div>
+                 <div id="history-section">
+                    <h3 class="text-xl font-semibold text-slate-800 text-left mb-4">Riwayat Presensi Anda</h3>
+                    <div id="history-list" class="space-y-3 h-48 overflow-y-auto text-left">
+                        <!-- Riwayat akan diisi oleh JavaScript -->
                     </div>
                 </div>
-            </div>
 
-            <!-- Riwayat Presensi -->
-            <div class="glass-card-white rounded-3xl p-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-3xl font-bold gradient-text">
-                        <i class="fas fa-history mr-3"></i>
-                        Riwayat Presensi Anda
-                    </h2>
-                    <div class="flex items-center space-x-2">
-                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm text-slate-600">Real-time</span>
-                    </div>
-                </div>
-                
-                <div id="loading" class="text-center py-12">
-                    <div class="inline-flex items-center px-4 py-2 font-semibold leading-6 text-slate-500">
-                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Memuat riwayat presensi...
-                    </div>
-                </div>
-                
-                <div id="attendance-log" class="space-y-4 max-h-96 overflow-y-auto pr-2"></div>
+                <button id="logout-btn" class="mt-8 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Logout</button>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, getDoc, query, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Referensi DOM ---
-        const loginContainer = document.getElementById('login-container');
-        const appContainer = document.getElementById('app-container');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const userNameDisplay = document.getElementById('user-name');
-        const userEmailDisplay = document.getElementById('user-email');
-        const subtitle = document.getElementById('subtitle');
-        const autoScanStatusDiv = document.getElementById('auto-scan-status');
-        const statusMessage = document.getElementById('status-message');
-        const scannerSection = document.getElementById('scanner-section');
-        const scanButton = document.getElementById('scan-button');
-        const attendanceLog = document.getElementById('attendance-log');
-        const loadingIndicator = document.getElementById('loading');
-        
-        let html5QrCode;
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Konfigurasi Firebase ---
         const firebaseConfig = {
@@ -353,365 +69,203 @@
             appId: "1:372766345596:web:331ddc11a7b461273d3cf9"
         };
         const app = initializeApp(firebaseConfig);
+        
+        // --- Referensi DOM ---
+        const loginContainer = document.getElementById('login-container');
+        const attendanceContainer = document.getElementById('attendance-container');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userNameDisplay = document.getElementById('user-name');
+        const userEmailDisplay = document.getElementById('user-email');
+        const statusDisplay = document.getElementById('status-display');
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const historyList = document.getElementById('history-list');
+        
+        // --- Inisialisasi App Check dengan Penanganan Error ---
+        try {
+            // PERBAIKAN: Mengganti Site Key yang mungkin tidak valid dengan placeholder.
+            // Pastikan Anda mengganti placeholder ini dengan Site Key reCAPTCHA Enterprise yang benar dari Google Cloud Console.
+            const appCheck = initializeAppCheck(app, {
+                provider: new ReCaptchaEnterpriseProvider('6LeGTL0rAAAAAIYqQtjXWsZ3ZtA85KwriM9VQspE'),
+                isTokenAutoRefreshEnabled: true
+            });
+        } catch (error) {
+            console.error("Inisialisasi App Check Gagal:", error);
+            loginContainer.innerHTML = `
+                <h1 class="text-4xl font-bold text-red-600">Error Konfigurasi</h1>
+                <p class="mt-2 text-slate-500 mb-8">Gagal menginisialisasi keamanan (App Check). Pastikan Site Key reCAPTCHA Enterprise sudah benar dan API telah diaktifkan di Google Cloud Console.</p>
+            `;
+        }
+
         const db = getFirestore(app);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
-
+        
+        let unsubscribeFromHistory = null;
+        
         // --- Logika Login / Logout ---
-        loginBtn.addEventListener('click', async () => {
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Login Gagal:", error);
-                // Fallback jika popup diblokir
-                if (error && error.code === 'auth/popup-blocked') {
-                    try {
-                        await signInWithRedirect(auth, provider);
-                        return;
-                    } catch (err2) {
-                        console.error('Redirect login juga gagal:', err2);
-                        alert('Login gagal karena popup diblokir. Izinkan popup atau akses lewat domain yang diizinkan/HTTPS.');
-                    }
-                } else if (error && error.code === 'auth/unauthorized-domain') {
-                    alert('Domain ini belum diizinkan di Firebase Authentication. Tambahkan domain (mis. localhost) di Firebase console.');
-                } else {
-                    alert('Login Google gagal: ' + (error?.message || 'Tidak diketahui'));
-                }
-            }
-        });
-        logoutBtn.addEventListener('click', () => {
-            signOut(auth).catch(error => console.error("Logout Gagal:", error));
-        });
+        loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(error => console.error("Login Gagal:", error)));
+        logoutBtn.addEventListener('click', () => signOut(auth).catch(error => console.error("Logout Gagal:", error)));
 
-        // --- Otentikasi & Logika Utama ---
+        // --- Otentikasi ---
         onAuthStateChanged(auth, user => {
             if (user) {
-                // User logged in
                 loginContainer.style.display = 'none';
-                appContainer.style.display = 'block';
-
-                userNameDisplay.textContent = user.displayName;
+                attendanceContainer.style.display = 'block';
+                userNameDisplay.textContent = user.displayName || 'Nama Tidak Ditemukan';
                 userEmailDisplay.textContent = user.email;
                 
+                if (unsubscribeFromHistory) unsubscribeFromHistory();
+                listenForHistory(user.uid);
+                
                 const urlParams = new URLSearchParams(window.location.search);
-                const sessionIdFromUrl = urlParams.get('sessionId');
-
-                if (sessionIdFromUrl) {
-                    handleAutoAttendance(user, sessionIdFromUrl);
+                const sessionId = urlParams.get('sessionId');
+                
+                if (sessionId) {
+                    handleAttendance(sessionId, user);
                 } else {
-                    setupScanner();
+                    showStatus('info', 'Tidak Ada Sesi Aktif', 'Buka halaman ini dari QR code presensi.');
                 }
-
-                listenForMyLogs(user.uid);
             } else {
-                // User logged out
                 loginContainer.style.display = 'block';
-                appContainer.style.display = 'none';
+                attendanceContainer.style.display = 'none';
+                 if (unsubscribeFromHistory) unsubscribeFromHistory();
             }
         });
         
-        // --- Geolocation ---
-        function getUserLocation() {
-            return new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    return reject(new Error("Geolocation tidak didukung oleh browser Anda."));
-                }
-                navigator.geolocation.getCurrentPosition(
-                    (position) => resolve(position.coords),
-                    (error) => reject(error)
-                );
-            });
-        }
-        
-        async function handleAutoAttendance(user, sessionId) {
-            scannerSection.style.display = 'none';
-            autoScanStatusDiv.style.display = 'block';
-            subtitle.textContent = "Melakukan presensi otomatis...";
-            statusMessage.textContent = "Memvalidasi sesi...";
+        async function handleAttendance(sessionId, user) {
+            showStatus('loading', 'Memproses...', 'Mohon tunggu sebentar.');
 
-            await saveAttendance(user, sessionId, statusMessage);
-
-            // Hapus parameter dari URL agar tidak memicu presensi lagi saat refresh
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        function setupScanner() {
-            html5QrCode = new Html5Qrcode("qr-reader");
-            scanButton.addEventListener('click', () => {
-                scanButton.disabled = true;
-                scanButton.textContent = "Membuka Kamera...";
-                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-                .then(() => scanButton.style.display = 'none')
-                .catch(err => {
-                    alert("Gagal mengakses kamera. Pastikan Anda memberikan izin.");
-                    scanButton.disabled = false; scanButton.textContent = "Coba Lagi";
-                });
-            });
-        }
-
-        async function onScanSuccess(decodedText) {
-            await html5QrCode.stop().catch(err => console.error("Gagal stop scanner.", err));
-            scanButton.style.display = 'block';
-            scanButton.disabled = false;
-            scanButton.textContent = "Mulai Pindai";
-            
             try {
-                const url = new URL(decodedText);
-                const sessionId = url.searchParams.get('sessionId');
-                if (sessionId && auth.currentUser) {
-                    scannerSection.style.display = 'none';
-                    autoScanStatusDiv.style.display = 'block';
-                    await saveAttendance(auth.currentUser, sessionId, statusMessage);
-                    // Reset UI setelah beberapa detik
-                    setTimeout(() => {
-                       scannerSection.style.display = 'block';
-                       autoScanStatusDiv.style.display = 'none';
-                       statusMessage.textContent = '';
-                    }, 5000);
-                } else {
-                    throw new Error("QR Code tidak valid atau Anda belum login.");
+                // 1. Periksa apakah user sudah pernah absen di sesi ini
+                const attendanceDocRef = doc(db, `presensi/${sessionId}/peserta`, user.uid);
+                const attendanceDocSnap = await getDoc(attendanceDocRef);
+
+                if (attendanceDocSnap.exists()) {
+                    showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
+                    return; // Hentikan proses
                 }
-            } catch (error) {
-                 alert("QR Code tidak valid.");
-            }
-        }
-        
-        async function saveAttendance(user, sessionId, statusElement) {
-            try {
+
+                // 2. Periksa status sesi (terbuka atau tertutup)
                 const sessionDocRef = doc(db, "kegiatan", sessionId);
-                const sessionDoc = await getDoc(sessionDocRef);
-                if (!sessionDoc.exists()) throw new Error("Sesi presensi tidak valid.");
+                const sessionDocSnap = await getDoc(sessionDocRef);
+
+                if (!sessionDocSnap.exists()) {
+                    showStatus('error', 'Sesi Tidak Ditemukan', 'Sesi presensi ini tidak valid atau sudah dihapus.');
+                    return;
+                }
                 
-                // Cek apakah sesi sudah ditutup
-                if (sessionDoc.data().status === 'tutup') {
-                    throw new Error("Sesi presensi ini telah ditutup oleh admin.");
+                const sessionData = sessionDocSnap.data();
+                if (sessionData.status === 'tutup') {
+                    showStatus('error', 'Sesi Ditutup', 'Sesi presensi untuk kegiatan ini sudah ditutup oleh admin.');
+                    return;
                 }
 
-                const sessionName = sessionDoc.data().nama;
-                statusElement.textContent = `Mendapatkan lokasi...`;
-
-                const locationCoords = await getUserLocation().catch(err => {
-                   console.warn("Gagal mendapatkan lokasi:", err.message);
-                   return null; // Lanjutkan tanpa lokasi jika gagal
+                // 3. Jika semua valid, lanjutkan proses presensi
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const locationData = { lat: latitude, lng: longitude };
+                    await recordAttendance(sessionId, user, sessionData.nama, locationData);
+                }, async (error) => {
+                    console.warn("Gagal mendapatkan lokasi:", error.message);
+                    await recordAttendance(sessionId, user, sessionData.nama, null); // Tetap lanjutkan tanpa data lokasi
                 });
 
-                statusElement.textContent = `Mencatat kehadiran untuk "${sessionName}"...`;
-                
-                const attendanceData = {
-                    waktu: new Date(),
-                    nama: user.displayName,
-                    email: user.email,
-                    lokasi: locationCoords ? { lat: locationCoords.latitude, lng: locationCoords.longitude } : null
-                };
-
-                // Menyimpan ke daftar hadir global
-                const attendeeDocRef = doc(db, `presensi/${sessionId}/peserta`, user.uid);
-                await setDoc(attendeeDocRef, attendanceData);
-
-                // Menyimpan ke riwayat pribadi user
-                const userLogCollectionRef = collection(db, `users/${user.uid}/logs`);
-                await addDoc(userLogCollectionRef, {
-                    ...attendanceData,
-                    kegiatanId: sessionId,
-                    namaKegiatan: sessionName,
-                });
-                
-                statusElement.textContent = `Sukses! Absen untuk "${sessionName}" berhasil.`;
-                statusElement.className = 'font-medium text-center h-6 text-green-600';
             } catch (error) {
-                console.error("Gagal menyimpan presensi: ", error);
-                let friendlyMessage = `Error: ${error.message}`;
-                statusElement.textContent = friendlyMessage;
-                statusElement.className = 'font-medium text-center h-6 text-red-600';
+                console.error("Error saat menangani presensi:", error);
+                if (error.code === 'permission-denied') {
+                     showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
+                } else {
+                     showStatus('error', 'Gagal', 'Terjadi kesalahan. Silakan coba lagi.');
+                }
             }
         }
 
-        function listenForMyLogs(userId) {
-            const logsCollectionRef = collection(db, `users/${userId}/logs`);
-            const q = query(logsCollectionRef, orderBy("waktu", "desc"), limit(50));
-            onSnapshot(q, (snapshot) => {
-                loadingIndicator.style.display = 'none';
-                const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAttendanceLogs(logs);
-            }, (error) => {
-                loadingIndicator.textContent = "Gagal memuat riwayat.";
-            });
+        async function recordAttendance(sessionId, user, sessionName, locationData) {
+            const now = new Date();
+            const attendanceData = {
+                nama: user.displayName,
+                email: user.email,
+                waktu: now,
+                lokasi: locationData,
+            };
+            const userLogData = {
+                namaSesi: sessionName,
+                waktu: now,
+                sessionId: sessionId,
+            };
+
+            try {
+                // Simpan ke daftar hadir global
+                const attendanceDocRef = doc(db, `presensi/${sessionId}/peserta`, user.uid);
+                await setDoc(attendanceDocRef, attendanceData);
+
+                // Simpan ke riwayat pribadi user
+                const logDocRef = doc(db, `users/${user.uid}/logs`, sessionId); // Gunakan sessionId sebagai ID log
+                await setDoc(logDocRef, userLogData);
+                
+                showStatus('success', 'Berhasil!', `Presensi Anda untuk "${sessionName}" telah tercatat.`);
+            } catch (error) {
+                 console.error("Error saat mencatat presensi:", error);
+                 if (error.code === 'permission-denied') {
+                     showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
+                 } else {
+                     showStatus('error', 'Gagal', 'Gagal mencatat data. Cek console untuk detail.');
+                 }
+            }
         }
         
-        function renderAttendanceLogs(logs) {
-            if (logs.length === 0) {
-                attendanceLog.innerHTML = `
-                    <div class="text-center py-12">
-                        <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-calendar-check text-4xl text-slate-300"></i>
-                        </div>
-                        <p class="text-lg text-slate-600 mb-2">Belum ada riwayat presensi</p>
-                        <p class="text-sm text-slate-500">Riwayat presensi Anda akan muncul di sini</p>
-                    </div>
-                `;
-                return;
-            }
+        function listenForHistory(userId) {
+            const historyCollectionRef = collection(db, `users/${userId}/logs`);
+            const q = query(historyCollectionRef, orderBy('waktu', 'desc'));
             
-            attendanceLog.innerHTML = logs.map((log, index) => {
-                const timestamp = log.waktu.toDate();
-                const formattedTime = timestamp.toLocaleString('id-ID', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                const formattedDate = timestamp.toLocaleDateString('id-ID', { 
-                    day: '2-digit', 
-                    month: 'short', 
-                    year: 'numeric' 
-                });
-                
-                const timeAgo = getTimeAgo(timestamp);
-                const hasLocation = log.lokasi;
-                
-                return `
-                    <div class="log-card rounded-2xl p-6 transform transition-all duration-300 hover:scale-105">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center mb-3">
-                                    <div class="w-12 h-12 gradient-bg rounded-2xl flex items-center justify-center text-white font-bold text-lg mr-4">
-                                        <i class="fas fa-calendar-check"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-lg font-bold text-slate-800">${escapeHTML(log.namaKegiatan)}</h3>
-                                        <p class="text-sm text-slate-500">${formattedDate} • ${formattedTime}</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-center space-x-4 text-sm">
-                                    <span class="status-badge status-success">
-                                        <i class="fas fa-check mr-2"></i>
-                                        Presensi Berhasil
-                                    </span>
-                                    <span class="text-slate-500">
-                                        <i class="fas fa-clock mr-1"></i>
-                                        ${timeAgo}
-                                    </span>
-                                    ${hasLocation ? `
-                                        <span class="text-blue-600">
-                                            <i class="fas fa-map-marker-alt mr-1"></i>
-                                            Lokasi Tercatat
-                                        </span>
-                                    ` : `
-                                        <span class="text-slate-400">
-                                            <i class="fas fa-map-marker-alt mr-1"></i>
-                                            Lokasi Tidak Tersedia
-                                        </span>
-                                    `}
-                                </div>
+            unsubscribeFromHistory = onSnapshot(q, 
+                (snapshot) => { // Callback jika berhasil
+                    if (snapshot.empty) {
+                        historyList.innerHTML = '<p class="text-slate-500 text-center py-4">Belum ada riwayat presensi.</p>';
+                        return;
+                    }
+                    historyList.innerHTML = snapshot.docs.map(doc => {
+                        const log = doc.data();
+                        const time = log.waktu.toDate().toLocaleString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        });
+                        return `
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <p class="font-medium text-slate-800">${escapeHTML(log.namaSesi)}</p>
+                                <p class="text-xs text-slate-500">${time}</p>
                             </div>
-                            
-                            <div class="text-right">
-                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-check text-green-600 text-sm"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                        `;
+                    }).join('');
+                },
+                (error) => { // Callback jika terjadi error
+                    console.error("Gagal memuat riwayat:", error);
+                    historyList.innerHTML = `<div class="text-red-600 bg-red-100 p-3 rounded-lg text-center">
+                        <p class="font-semibold">Gagal Memuat Riwayat</p>
+                        <p class="text-sm">Pastikan aturan keamanan Firebase sudah benar dan dipublikasikan.</p>
+                    </div>`;
+                }
+            );
         }
-
-        function getTimeAgo(date) {
-            const now = new Date();
-            const diffInSeconds = Math.floor((now - date) / 1000);
-            
-            if (diffInSeconds < 60) return 'Baru saja';
-            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} menit yang lalu`;
-            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} jam yang lalu`;
-            if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} hari yang lalu`;
-            return `${Math.floor(diffInSeconds / 2592000)} bulan yang lalu`;
+        
+        function showStatus(type, title, message) {
+            const colors = {
+                info: 'bg-blue-100 text-blue-800',
+                success: 'bg-green-100 text-green-800',
+                warning: 'bg-amber-100 text-amber-800',
+                error: 'bg-red-100 text-red-800',
+                loading: 'bg-slate-100 text-slate-800'
+            };
+            statusDisplay.className = `w-full p-4 rounded-lg text-center mb-6 ${colors[type]}`;
+            statusTitle.textContent = title;
+            statusMessage.textContent = message;
         }
 
         function escapeHTML(str) {
             const p = document.createElement('p');
-            p.textContent = str;
+            p.textContent = str || "";
             return p.innerHTML;
-        }
-
-        // Enhanced notification system
-        function showNotification(message, type = 'info', duration = 5000) {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-2xl text-white font-semibold transform transition-all duration-300 ${
-                type === 'success' ? 'gradient-bg-success' : 
-                type === 'error' ? 'gradient-bg-warning' : 'gradient-bg'
-            }`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, duration);
-        }
-
-        // Enhanced error handling
-        function handleError(error, userFriendlyMessage = null) {
-            console.error('Error:', error);
-            const message = userFriendlyMessage || error.message || 'Terjadi kesalahan yang tidak diketahui';
-            showNotification(message, 'error');
-        }
-
-        // Enhanced success handling
-        function handleSuccess(message) {
-            showNotification(message, 'success');
-        }
-
-        // Improved scanner setup with better error handling
-        function setupScanner() {
-            html5QrCode = new Html5Qrcode("qr-reader");
-            scanButton.addEventListener('click', async () => {
-                try {
-                    scanButton.disabled = true;
-                    scanButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Membuka Kamera...';
-                    
-                    const config = { 
-                        fps: 10, 
-                        qrbox: { width: 250, height: 250 },
-                        aspectRatio: 1.0
-                    };
-                    
-                    await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
-                    scanButton.style.display = 'none';
-                    
-                } catch (err) {
-                    console.error('Scanner error:', err);
-                    handleError(err, 'Gagal mengakses kamera. Pastikan Anda memberikan izin dan menggunakan HTTPS.');
-                    scanButton.disabled = false; 
-                    scanButton.innerHTML = '<i class="fas fa-redo mr-2"></i>Coba Lagi';
-                }
-            });
-        }
-
-        // Enhanced auto attendance with better UX
-        async function handleAutoAttendance(user, sessionId) {
-            try {
-                scannerSection.style.display = 'none';
-                autoScanStatusDiv.style.display = 'block';
-                subtitle.textContent = "Melakukan presensi otomatis...";
-                statusMessage.textContent = "Memvalidasi sesi...";
-
-                await saveAttendance(user, sessionId, statusMessage);
-                handleSuccess('Presensi berhasil dilakukan!');
-
-                // Hapus parameter dari URL agar tidak memicu presensi lagi saat refresh
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
-            } catch (error) {
-                handleError(error, 'Gagal melakukan presensi otomatis');
-                // Reset UI jika gagal
-                setTimeout(() => {
-                    scannerSection.style.display = 'block';
-                    autoScanStatusDiv.style.display = 'none';
-                }, 3000);
-            }
         }
     </script>
 </body>
