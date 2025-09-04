@@ -84,10 +84,8 @@
         
         // --- Inisialisasi App Check dengan Penanganan Error ---
         try {
-            // PERBAIKAN: Mengganti Site Key yang mungkin tidak valid dengan placeholder.
-            // Pastikan Anda mengganti placeholder ini dengan Site Key reCAPTCHA Enterprise yang benar dari Google Cloud Console.
             const appCheck = initializeAppCheck(app, {
-                provider: new ReCaptchaEnterpriseProvider('6LeGTL0rAAAAAIYqQtjXWsZ3ZtA85KwriM9VQspE'),
+                provider: new ReCaptchaEnterpriseProvider('GANTI_DENGAN_SITE_KEY_ANDA'),
                 isTokenAutoRefreshEnabled: true
             });
         } catch (error) {
@@ -135,7 +133,7 @@
         });
         
         async function handleAttendance(sessionId, user) {
-            showStatus('loading', 'Memproses...', 'Mohon tunggu sebentar.');
+            showStatus('loading', 'Memverifikasi sesi...', 'Mohon tunggu sebentar.');
 
             try {
                 // 1. Periksa apakah user sudah pernah absen di sesi ini
@@ -144,10 +142,10 @@
 
                 if (attendanceDocSnap.exists()) {
                     showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
-                    return; // Hentikan proses
+                    return;
                 }
 
-                // 2. Periksa status sesi (terbuka atau tertutup)
+                // 2. Periksa status sesi
                 const sessionDocRef = doc(db, "kegiatan", sessionId);
                 const sessionDocSnap = await getDoc(sessionDocRef);
 
@@ -162,14 +160,22 @@
                     return;
                 }
 
-                // 3. Jika semua valid, lanjutkan proses presensi
+                // PERBAIKAN: Menampilkan status bahwa lokasi sedang dideteksi
+                showStatus('loading', 'Mendeteksi lokasi Anda...', 'Browser mungkin akan meminta izin.');
+
+                // 3. Lanjutkan proses presensi
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     const { latitude, longitude } = position.coords;
                     const locationData = { lat: latitude, lng: longitude };
                     await recordAttendance(sessionId, user, sessionData.nama, locationData);
                 }, async (error) => {
                     console.warn("Gagal mendapatkan lokasi:", error.message);
-                    await recordAttendance(sessionId, user, sessionData.nama, null); // Tetap lanjutkan tanpa data lokasi
+                    showStatus('warning', 'Lokasi Gagal Didapatkan', 'Melanjutkan presensi tanpa data lokasi.');
+                    await recordAttendance(sessionId, user, sessionData.nama, null);
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
                 });
 
             } catch (error) {
@@ -183,6 +189,7 @@
         }
 
         async function recordAttendance(sessionId, user, sessionName, locationData) {
+            showStatus('loading', 'Mencatat presensi...', 'Mohon tunggu.');
             const now = new Date();
             const attendanceData = {
                 nama: user.displayName,
@@ -197,14 +204,10 @@
             };
 
             try {
-                // Simpan ke daftar hadir global
                 const attendanceDocRef = doc(db, `presensi/${sessionId}/peserta`, user.uid);
                 await setDoc(attendanceDocRef, attendanceData);
-
-                // Simpan ke riwayat pribadi user
-                const logDocRef = doc(db, `users/${user.uid}/logs`, sessionId); // Gunakan sessionId sebagai ID log
+                const logDocRef = doc(db, `users/${user.uid}/logs`, sessionId);
                 await setDoc(logDocRef, userLogData);
-                
                 showStatus('success', 'Berhasil!', `Presensi Anda untuk "${sessionName}" telah tercatat.`);
             } catch (error) {
                  console.error("Error saat mencatat presensi:", error);
@@ -221,7 +224,7 @@
             const q = query(historyCollectionRef, orderBy('waktu', 'desc'));
             
             unsubscribeFromHistory = onSnapshot(q, 
-                (snapshot) => { // Callback jika berhasil
+                (snapshot) => {
                     if (snapshot.empty) {
                         historyList.innerHTML = '<p class="text-slate-500 text-center py-4">Belum ada riwayat presensi.</p>';
                         return;
@@ -239,7 +242,7 @@
                         `;
                     }).join('');
                 },
-                (error) => { // Callback jika terjadi error
+                (error) => {
                     console.error("Gagal memuat riwayat:", error);
                     historyList.innerHTML = `<div class="text-red-600 bg-red-100 p-3 rounded-lg text-center">
                         <p class="font-semibold">Gagal Memuat Riwayat</p>
