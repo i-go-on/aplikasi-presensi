@@ -284,21 +284,12 @@ npm audit
 
 ## 📝 **Changelog**
 
-### **v2.1.0** (Latest)
+### **v1.1.0** (Latest)
 - ✨ **reCAPTCHA Enterprise Integration** - Perlindungan keamanan tingkat enterprise
 - 🔒 **Firebase App Check** - Validasi keamanan aplikasi real-time
 - 🛡️ **Enhanced Security** - Perlindungan dari bot dan serangan otomatis
 - 🚀 **Performance Improvements** - Optimasi performa dan loading
 - 🎨 **UI/UX Enhancements** - Perbaikan interface dan user experience
-
-### **v2.0.0** - UI Modernization
-- ✨ **New**: Glassmorphism design system
-- ✨ **New**: Gradient backgrounds dan animations
-- ✨ **New**: Enhanced notification system
-- ✨ **New**: Download & Share QR functionality
-- 🎨 **Improved**: Modern card designs
-- 🎨 **Improved**: Better mobile responsiveness
-- 🐛 **Fixed**: Various UI/UX improvements
 
 ### **v1.0.0** - Initial Release
 - 🎯 **Core**: QR Code generation system
