@@ -55,20 +55,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Referensi DOM ---
-        const loginContainer = document.getElementById('login-container');
-        const attendanceContainer = document.getElementById('attendance-container');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const userNameDisplay = document.getElementById('user-name');
-        const userEmailDisplay = document.getElementById('user-email');
-        const statusDisplay = document.getElementById('status-display');
-        const statusTitle = document.getElementById('status-title');
-        const statusMessage = document.getElementById('status-message');
-        const historyList = document.getElementById('history-list');
 
         // --- Konfigurasi Firebase ---
         const firebaseConfig = {
@@ -80,12 +69,41 @@
             appId: "1:372766345596:web:331ddc11a7b461273d3cf9"
         };
         const app = initializeApp(firebaseConfig);
+        
+        // --- Referensi DOM ---
+        const loginContainer = document.getElementById('login-container');
+        const attendanceContainer = document.getElementById('attendance-container');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userNameDisplay = document.getElementById('user-name');
+        const userEmailDisplay = document.getElementById('user-email');
+        const statusDisplay = document.getElementById('status-display');
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const historyList = document.getElementById('history-list');
+        
+        // --- Inisialisasi App Check dengan Penanganan Error ---
+        try {
+            // PERBAIKAN: Mengganti Site Key yang mungkin tidak valid dengan placeholder.
+            // Pastikan Anda mengganti placeholder ini dengan Site Key reCAPTCHA Enterprise yang benar dari Google Cloud Console.
+            const appCheck = initializeAppCheck(app, {
+                provider: new ReCaptchaEnterpriseProvider('6LeGTL0rAAAAAIYqQtjXWsZ3ZtA85KwriM9VQspE'),
+                isTokenAutoRefreshEnabled: true
+            });
+        } catch (error) {
+            console.error("Inisialisasi App Check Gagal:", error);
+            loginContainer.innerHTML = `
+                <h1 class="text-4xl font-bold text-red-600">Error Konfigurasi</h1>
+                <p class="mt-2 text-slate-500 mb-8">Gagal menginisialisasi keamanan (App Check). Pastikan Site Key reCAPTCHA Enterprise sudah benar dan API telah diaktifkan di Google Cloud Console.</p>
+            `;
+        }
+
         const db = getFirestore(app);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
         
         let unsubscribeFromHistory = null;
-
+        
         // --- Logika Login / Logout ---
         loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(error => console.error("Login Gagal:", error)));
         logoutBtn.addEventListener('click', () => signOut(auth).catch(error => console.error("Logout Gagal:", error)));
@@ -156,7 +174,6 @@
 
             } catch (error) {
                 console.error("Error saat menangani presensi:", error);
-                // Menangani error permission denied secara spesifik
                 if (error.code === 'permission-denied') {
                      showStatus('warning', 'Presensi Ganda', 'Anda sudah tercatat dalam presensi untuk sesi ini.');
                 } else {
@@ -253,3 +270,4 @@
     </script>
 </body>
 </html>
+
